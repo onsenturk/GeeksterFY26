@@ -1,34 +1,774 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="page-header">
-  <h1>Supply Chain Optimizer</h1>
-  <p>Highlights products with high lead time or low stock.</p>
+  <h1>💘 Cupid's Supply Chain Command Center</h1>
+  <p>Real-time tracking - Because love can't be delivered late! ⏰</p>
 </section>
 
-<section class="card">
-  <table>
-    <thead>
-      <tr>
-        <th>Product</th>
-        <th>Lead Time (days)</th>
-        <th>Stock Level</th>
-        <th>Delay Reason</th>
-        <th>Region</th>
-        <th>Risk Score</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in alerts %}
-      <tr>
-        <td>{{ item.row.product_name }}</td>
-        <td>{{ item.row.vendor_lead_time_days }}</td>
-        <td>{{ item.row.stock_level }}</td>
-        <td>{{ item.row.delay_reason }}</td>
-        <td>{{ item.row.region }}</td>
-        <td>{{ item.risk }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<!-- Summary Stats -->
+<section class="stats-grid">
+  <div class="stat-card critical">
+    <div class="stat-number">{{ alerts|length }}</div>
+    <div class="stat-label">⚠️ Critical Alerts</div>
+    <div class="stat-description">Products needing immediate attention</div>
+  </div>
+  <div class="stat-card high">
+    <div class="stat-number">
+      {% set high_risk = alerts|selectattr('risk', '>', 75)|list|length %}
+      {{ high_risk }}
+    </div>
+    <div class="stat-label">🔴 High Risk</div>
+    <div class="stat-description">Risk score > 75%</div>
+  </div>
+  <div class="stat-card medium">
+    <div class="stat-number">
+      {% set medium_risk = alerts|selectattr('risk', '>', 50)|selectattr('risk', '<', 75)|list|length %}
+      {{ medium_risk }}
+    </div>
+    <div class="stat-label">🟡 Medium Risk</div>
+    <div class="stat-description">Risk score 50-75%</div>
+  </div>
+  <div class="stat-card low">
+    <div class="stat-number">
+      {% set low_risk = alerts|selectattr('risk', '<', 50)|list|length %}
+      {{ low_risk }}
+    </div>
+    <div class="stat-label">🟢 Low Risk</div>
+    <div class="stat-description">Risk score < 50%</div>
+  </div>
 </section>
+
+<!-- Main Data Table with Enhanced Styling -->
+<section class="card supply-chain-container">
+  <div class="table-header">
+    <h2>📋 Supply Chain Alert Details</h2>
+    <p class="table-subtitle">Hover over risk scores to see urgency level</p>
+  </div>
+
+  <!-- Filter Section -->
+  <div class="filter-section" id="filterSection">
+    <div class="filter-header">
+      <div class="filter-title">
+        <button id="toggleFilters" class="btn-toggle">
+          <span class="toggle-icon">▼</span>
+          <h3>🔍 Filter Options</h3>
+        </button>
+      </div>
+      <button id="clearFilters" class="btn-clear">Clear All Filters</button>
+    </div>
+    
+    <div class="filters-grid" id="filtersContent">
+      <!-- Search Product Name -->
+      <div class="filter-group">
+        <label>🔎 Product Name</label>
+        <input type="text" id="filterProduct" placeholder="Search product..." class="filter-input">
+      </div>
+
+      <!-- Filter by Risk Level -->
+      <div class="filter-group">
+        <label>📊 Risk Level</label>
+        <select id="filterRisk" class="filter-select">
+          <option value="">All Risk Levels</option>
+          <option value="critical">🚨 Critical (75%+)</option>
+          <option value="high">🔴 High (50-75%)</option>
+          <option value="medium">🟡 Medium (&lt;50%)</option>
+        </select>
+      </div>
+
+      <!-- Filter by Region -->
+      <div class="filter-group">
+        <label>🌍 Region</label>
+        <select id="filterRegion" class="filter-select">
+          <option value="">All Regions</option>
+          {% set regions = [] %}
+          {% for item in alerts %}
+            {% if item.row.region not in regions %}
+              {% set _ = regions.append(item.row.region) %}
+              <option value="{{ item.row.region }}">{{ item.row.region }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Filter by Status -->
+      <div class="filter-group">
+        <label>⚠️ Status</label>
+        <select id="filterStatus" class="filter-select">
+          <option value="">All Statuses</option>
+          <option value="critical">URGENT! 🚨</option>
+          <option value="high">ACTION NEEDED 🔴</option>
+          <option value="medium">MONITOR 🟡</option>
+        </select>
+      </div>
+
+      <!-- Filter by Delay Reason -->
+      <div class="filter-group">
+        <label>📌 Delay Reason</label>
+        <select id="filterDelay" class="filter-select">
+          <option value="">All Reasons</option>
+          {% set delays = [] %}
+          {% for item in alerts %}
+            {% if item.row.delay_reason not in delays %}
+              {% set _ = delays.append(item.row.delay_reason) %}
+              <option value="{{ item.row.delay_reason }}">{{ item.row.delay_reason }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Filter by Lead Time Range -->
+      <div class="filter-group">
+        <label>⏱️ Lead Time (days)</label>
+        <div class="range-inputs">
+          <input type="number" id="filterLeadMin" placeholder="Min" class="filter-input-small" min="0">
+          <span class="range-separator">-</span>
+          <input type="number" id="filterLeadMax" placeholder="Max" class="filter-input-small" min="0">
+        </div>
+      </div>
+    </div>
+
+  <div class="table-responsive">
+    <table class="supply-table" id="supplyTable">
+      <thead>
+        <tr>
+          <th>Product Name</th>
+          <th>Lead Time</th>
+          <th>Stock Level</th>
+          <th>Status</th>
+          <th>Delay Reason</th>
+          <th>Region</th>
+          <th>Risk Level</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        {% for item in alerts %}
+        {% set risk = item.risk|int %}
+        {% if risk >= 75 %}
+          {% set risk_class = "critical" %}
+          {% set urgency = "URGENT! 🚨" %}
+        {% elif risk >= 50 %}
+          {% set risk_class = "high" %}
+          {% set urgency = "ACTION NEEDED 🔴" %}
+        {% else %}
+          {% set risk_class = "medium" %}
+          {% set urgency = "MONITOR 🟡" %}
+        {% endif %}
+        
+        <tr class="risk-{{ risk_class }} table-row" 
+            data-risk="{{ risk_class }}" 
+            data-region="{{ item.row.region }}" 
+            data-status="{{ risk_class }}"
+            data-delay="{{ item.row.delay_reason }}"
+            data-leadtime="{{ item.row.vendor_lead_time_days|int }}"
+            data-product="{{ item.row.product_name|lower }}">
+          <td class="product-name">
+            <span class="emoji">📦</span>
+            {{ item.row.product_name }}
+          </td>
+          <td class="lead-time">
+            <span class="badge-pill">{{ item.row.vendor_lead_time_days }}</span>
+            <span class="unit">days</span>
+          </td>
+          <td class="stock-level">
+            <div class="stock-bar">
+              <div class="stock-fill" style="width: {{ (item.row.stock_level|int / 1000) * 100 }}%"></div>
+            </div>
+            <span class="stock-value">{{ item.row.stock_level }}</span>
+          </td>
+          <td class="status-cell">
+            <span class="status-badge status-{{ risk_class }}">{{ urgency }}</span>
+          </td>
+          <td class="delay-reason">
+            <span class="reason-badge">{{ item.row.delay_reason }}</span>
+          </td>
+          <td class="region">
+            <span class="region-badge">🌍 {{ item.row.region }}</span>
+          </td>
+          <td class="risk-score">
+            <div class="risk-container" title="{{ urgency }}">
+              <div class="risk-bar-container">
+                <div class="risk-bar risk-{{ risk_class }}" style="width: {{ risk }}%">
+                  <span class="risk-text">{{ risk }}%</span>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- No Results Message -->
+  <div id="noResults" class="no-results" style="display: none;">
+    <p>😅 No records match your filter criteria. Try adjusting your selections!</p>
+  </div>
+
+  <!-- Cupid's Fun Facts Section -->
+  <div class="cupid-footer">
+    <p>💭 <strong>Cupid's Pro Tips:</strong></p>
+    <ul class="tips-list">
+      <li>💌 High lead times mean Cupid needs to shoot his arrows earlier!</li>
+      <li>📉 Low stock levels? Time to let love bloom elsewhere (find alternatives)!</li>
+      <li>🎯 Risk scores show where Cupid's supply chain might miss the heart!</li>
+      <li>🚀 Act on critical alerts faster than Cupid flies!</li>
+    </ul>
+  </div>
+</section>
+
+<style>
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+
+  .stat-card {
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-5px);
+  }
+
+  .stat-card.critical {
+    background: linear-gradient(135deg, #ff4757, #ff6348);
+  }
+
+  .stat-card.high {
+    background: linear-gradient(135deg, #ffa502, #ff7675);
+  }
+
+  .stat-card.medium {
+    background: linear-gradient(135deg, #ffd93d, #ffb347);
+  }
+
+  .stat-card.low {
+    background: linear-gradient(135deg, #1dd1a1, #00b894);
+  }
+
+  .stat-number {
+    font-size: 2.5em;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
+  .stat-label {
+    font-size: 1.1em;
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+
+  .stat-description {
+    font-size: 0.9em;
+    opacity: 0.95;
+  }
+
+  .supply-chain-container {
+    padding: 30px;
+  }
+
+  .table-header {
+    margin-bottom: 25px;
+    border-bottom: 3px solid #ff6b9d;
+    padding-bottom: 15px;
+  }
+
+  .table-header h2 {
+    margin: 0 0 5px 0;
+    color: #2c3e50;
+  }
+
+  .table-subtitle {
+    margin: 0;
+    color: #7f8c8d;
+    font-size: 0.95em;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+    margin-bottom: 20px;
+  }
+
+  .supply-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+  }
+
+  .supply-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+  }
+
+  .supply-table th {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 2px solid #667eea;
+  }
+
+  .supply-table tbody tr {
+    border-bottom: 1px solid #ecf0f1;
+    transition: background-color 0.2s ease;
+  }
+
+  .supply-table tbody tr:hover {
+    background-color: #f8f9ff;
+  }
+
+  .supply-table td {
+    padding: 15px;
+    vertical-align: middle;
+  }
+
+  .risk-critical {
+    background-color: #ffe5e5 !important;
+  }
+
+  .risk-high {
+    background-color: #fff3e0 !important;
+  }
+
+  .product-name {
+    font-weight: 600;
+    color: #2c3e50;
+  }
+
+  .emoji {
+    margin-right: 8px;
+    font-size: 1.2em;
+  }
+
+  .badge-pill {
+    background: #667eea;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 1em;
+  }
+
+  .unit {
+    color: #7f8c8d;
+    font-size: 0.85em;
+    margin-left: 5px;
+  }
+
+  .stock-level {
+    min-width: 150px;
+  }
+
+  .stock-bar {
+    background: #ecf0f1;
+    border-radius: 10px;
+    height: 20px;
+    overflow: hidden;
+    margin-bottom: 5px;
+  }
+
+  .stock-fill {
+    background: linear-gradient(90deg, #1dd1a1, #00b894);
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+
+  .stock-value {
+    font-size: 0.9em;
+    color: #7f8c8d;
+    font-weight: 500;
+  }
+
+  .status-badge {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9em;
+    white-space: nowrap;
+  }
+
+  .status-critical {
+    background: #ffe5e5;
+    color: #d63031;
+  }
+
+  .status-high {
+    background: #fff3e0;
+    color: #e67e22;
+  }
+
+  .status-medium {
+    background: #fff9e6;
+    color: #f39c12;
+  }
+
+  .reason-badge {
+    background: #e8f4f8;
+    color: #0984e3;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.9em;
+  }
+
+  .region-badge {
+    background: #f0e6ff;
+    color: #764ba2;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    font-weight: 500;
+  }
+
+  .risk-container {
+    cursor: pointer;
+  }
+
+  .risk-bar-container {
+    background: #ecf0f1;
+    border-radius: 8px;
+    height: 25px;
+    overflow: hidden;
+    position: relative;
+    min-width: 100px;
+  }
+
+  .risk-bar {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.85em;
+    transition: width 0.3s ease;
+    min-width: 30px;
+  }
+
+  .risk-bar.risk-critical {
+    background: linear-gradient(90deg, #ff4757, #ff6348);
+  }
+
+  .risk-bar.risk-high {
+    background: linear-gradient(90deg, #ffa502, #ff7675);
+  }
+
+  .risk-bar.risk-medium {
+    background: linear-gradient(90deg, #ffd93d, #ffb347);
+  }
+
+  .cupid-footer {
+    background: linear-gradient(135deg, #fff5f8 0%, #ffe6f0 100%);
+    border-left: 4px solid #ff6b9d;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+  }
+
+  .cupid-footer p {
+    margin: 0 0 15px 0;
+    font-weight: 600;
+    color: #d63031;
+  }
+
+  .tips-list {
+    margin: 0;
+    padding-left: 20px;
+    color: #2c3e50;
+  }
+
+  .tips-list li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+  }
+
+  /* Filter Section Styles */
+  .filter-section {
+    background: linear-gradient(135deg, #f5f7ff 0%, #f0e6ff 100%);
+    border: 2px solid #667eea;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+  }
+
+  .filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+  }
+
+  .filter-title {
+    flex: 1;
+  }
+
+  .btn-toggle {
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.3s ease;
+  }
+
+  .btn-toggle:hover h3 {
+    color: #667eea;
+  }
+
+  .btn-toggle h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.2em;
+    transition: color 0.3s ease;
+  }
+
+  .toggle-icon {
+    font-size: 0.9em;
+    transition: transform 0.3s ease;
+    display: inline-block;
+  }
+
+  .filter-section.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+  }
+
+  .filter-section.collapsed #filtersContent {
+    display: none;
+  }
+
+  .btn-clear {
+    background: linear-gradient(135deg, #ff6b6b, #ff5252);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+  }
+
+  .btn-clear:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+  }
+
+  .filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .filter-group label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    font-size: 0.95em;
+  }
+
+  .filter-input,
+  .filter-select {
+    padding: 10px 12px;
+    border: 2px solid #dfe6e9;
+    border-radius: 6px;
+    font-size: 0.9em;
+    font-family: inherit;
+    transition: all 0.3s ease;
+  }
+
+  .filter-input:focus,
+  .filter-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  .filter-input::placeholder {
+    color: #a8b0b8;
+  }
+
+  .range-inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .filter-input-small {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid #dfe6e9;
+    border-radius: 6px;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+  }
+
+  .filter-input-small:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  .range-separator {
+    color: #7f8c8d;
+    font-weight: 600;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 40px;
+    color: #7f8c8d;
+    font-size: 1.1em;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 20px 0;
+  }
+
+  @media (max-width: 768px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .supply-table {
+      font-size: 0.85em;
+    }
+    
+    .supply-table th,
+    .supply-table td {
+      padding: 10px;
+    }
+
+    .filters-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .filter-header {
+      flex-direction: column;
+      gap: 15px;
+      align-items: flex-start;
+    }
+
+    .btn-toggle {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+
+<script>
+  // Filter Toggle Functionality
+  const toggleBtn = document.getElementById('toggleFilters');
+  const filterSection = document.getElementById('filterSection');
+
+  // Set initial state as collapsed
+  filterSection.classList.add('collapsed');
+
+  toggleBtn.addEventListener('click', () => {
+    filterSection.classList.toggle('collapsed');
+  });
+
+  // Get all filter elements
+  const filterProduct = document.getElementById('filterProduct');
+  const filterRisk = document.getElementById('filterRisk');
+  const filterRegion = document.getElementById('filterRegion');
+  const filterStatus = document.getElementById('filterStatus');
+  const filterDelay = document.getElementById('filterDelay');
+  const filterLeadMin = document.getElementById('filterLeadMin');
+  const filterLeadMax = document.getElementById('filterLeadMax');
+  const clearBtn = document.getElementById('clearFilters');
+  const tableRows = document.querySelectorAll('.table-row');
+  const noResults = document.getElementById('noResults');
+
+  // Add event listeners to all filters
+  if (filterProduct) filterProduct.addEventListener('change', applyFilters);
+  if (filterProduct) filterProduct.addEventListener('input', applyFilters);
+  if (filterRisk) filterRisk.addEventListener('change', applyFilters);
+  if (filterRegion) filterRegion.addEventListener('change', applyFilters);
+  if (filterStatus) filterStatus.addEventListener('change', applyFilters);
+  if (filterDelay) filterDelay.addEventListener('change', applyFilters);
+  if (filterLeadMin) filterLeadMin.addEventListener('change', applyFilters);
+  if (filterLeadMin) filterLeadMin.addEventListener('input', applyFilters);
+  if (filterLeadMax) filterLeadMax.addEventListener('change', applyFilters);
+  if (filterLeadMax) filterLeadMax.addEventListener('input', applyFilters);
+  if (clearBtn) clearBtn.addEventListener('click', clearAllFilters);
+
+  function applyFilters() {
+    let visibleRows = 0;
+
+    tableRows.forEach(row => {
+      const product = row.getAttribute('data-product') || '';
+      const risk = row.getAttribute('data-risk') || '';
+      const region = row.getAttribute('data-region') || '';
+      const status = row.getAttribute('data-status') || '';
+      const delay = row.getAttribute('data-delay') || '';
+      const leadTime = parseInt(row.getAttribute('data-leadtime')) || 0;
+
+      // Get filter values
+      const productFilter = filterProduct ? filterProduct.value.toLowerCase() : '';
+      const riskFilter = filterRisk ? filterRisk.value : '';
+      const regionFilter = filterRegion ? filterRegion.value : '';
+      const statusFilter = filterStatus ? filterStatus.value : '';
+      const delayFilter = filterDelay ? filterDelay.value : '';
+      const leadMinFilter = filterLeadMin ? filterLeadMin.value : '';
+      const leadMaxFilter = filterLeadMax ? filterLeadMax.value : '';
+
+      // Check all filter conditions
+      const productMatch = product.includes(productFilter);
+      const riskMatch = riskFilter === '' || risk === riskFilter;
+      const regionMatch = regionFilter === '' || region === regionFilter;
+      const statusMatch = statusFilter === '' || status === statusFilter;
+      const delayMatch = delayFilter === '' || delay === delayFilter;
+
+      const leadMinVal = leadMinFilter === '' ? 0 : parseInt(leadMinFilter);
+      const leadMaxVal = leadMaxFilter === '' ? Infinity : parseInt(leadMaxFilter);
+      const leadTimeMatch = leadTime >= leadMinVal && leadTime <= leadMaxVal;
+
+      // Show or hide the row based on all filter conditions
+      const shouldShow = productMatch && riskMatch && regionMatch && statusMatch && delayMatch && leadTimeMatch;
+
+      if (shouldShow) {
+        row.style.display = '';
+        visibleRows++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    // Show/hide no results message
+    if (noResults) {
+      if (visibleRows === 0) {
+        noResults.style.display = 'block';
+      } else {
+        noResults.style.display = 'none';
+      }
+    }
+  }
+
+  function clearAllFilters() {
+    filterProduct.value = '';
+    filterRisk.value = '';
+    filterRegion.value = '';
+    filterStatus.value = '';
+    filterDelay.value = '';
+    filterLeadMin.value = '';
+    filterLeadMax.value = '';
+
+    // Re-apply filters (which will show all rows)
+    applyFilters();
+  }
+</script>
 {% endblock %}

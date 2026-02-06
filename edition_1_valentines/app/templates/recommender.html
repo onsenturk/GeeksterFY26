@@ -1,54 +1,427 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="page-header">
-  <h1>Smart Chocolate Recommender</h1>
-  <p>Ranked recommendations from the Gift Recommender event log.</p>
+  <h1>🎁 Cupid's Smart Chocolate Recommender</h1>
+  <p>AI-powered gift suggestions to make hearts melt with joy!</p>
 </section>
 
-<section class="card">
-  <form method="post" class="form">
-    <label>
-      Choose a customer
-      <select name="customer_id" required>
+<section class="card recommender-form-card">
+  <form method="post" class="recommender-form">
+    <div class="form-title">
+      <h2>💝 Find the Perfect Gift</h2>
+      <p>Select a customer and let Cupid recommend the perfect chocolate gift...</p>
+    </div>
+    <div class="form-group">
+      <label for="customer_id">👤 Choose a Customer</label>
+      <select name="customer_id" id="customer_id" required>
+        <option value="">Select a customer...</option>
         {% for customer in customers %}
         <option value="{{ customer.customer_id }}">
-          {{ customer.customer_id }} - {{ customer.first_name }} {{ customer.last_name }}
+          {{ customer.first_name }} {{ customer.last_name }} (ID: {{ customer.customer_id }})
         </option>
         {% endfor %}
       </select>
-    </label>
-    <button type="submit" class="button">Recommend</button>
+    </div>
+    <button type="submit" class="btn-recommend">🎯 Get Recommendations</button>
   </form>
 </section>
 
 {% if recommendations %}
-<section class="card">
-  <h2>Top Picks</h2>
-  {% if explain_mode %}
-  <p class="muted">Explanation mode: {{ explain_mode }}</p>
-  {% endif %}
-  <table>
-    <thead>
-      <tr>
-        <th>Product</th>
-        <th>Category</th>
-        <th>Price</th>
-        <th>Rating</th>
-        <th>Why this gift</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in recommendations %}
-      <tr>
-        <td>{{ row.product_name }}</td>
-        <td>{{ row.product_category }}</td>
-        <td>{{ "%.2f"|format(row.unit_price or 0) }}</td>
-        <td>{{ "%.1f"|format(row.rating or 0) }}</td>
-        <td class="explanation">{{ row.why }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<section class="recommendations-section">
+  <div class="recommendations-header">
+    <h2>🌟 Top Chocolate Picks for You</h2>
+    <p class="recommendations-subtitle">Curated by AI to match your taste preferences</p>
+  </div>
+
+  <div class="recommendations-grid">
+    {% for row in recommendations %}
+    {% set price = row.unit_price or 0 %}
+    {% set rating = row.rating or 0 %}
+    {% if price < 20 %}
+      {% set price_class = "budget" %}
+      {% set price_label = "💰 Budget-Friendly" %}
+    {% elif price < 50 %}
+      {% set price_class = "standard" %}
+      {% set price_label = "💎 Standard Luxury" %}
+    {% else %}
+      {% set price_class = "premium" %}
+      {% set price_label = "👑 Premium Choice" %}
+    {% endif %}
+
+    <div class="gift-card">
+      <div class="gift-card-header">
+        <div class="rank-badge">#{{ loop.index }}</div>
+        <div class="category-badge">{{ row.product_category }}</div>
+      </div>
+
+      <div class="gift-card-content">
+        <h3 class="product-name">🍫 {{ row.product_name }}</h3>
+        
+        <!-- Rating Stars -->
+        <div class="rating-section">
+          <div class="stars">
+            {% for i in range(5) %}
+              {% if i < rating|int %}
+              <span class="star filled">⭐</span>
+              {% else %}
+              <span class="star empty">☆</span>
+              {% endif %}
+            {% endfor %}
+          </div>
+          <span class="rating-value">{{ "%.1f"|format(rating) }}/5.0</span>
+        </div>
+
+        <!-- Price -->
+        <div class="price-section">
+          <div class="price-display">
+            <span class="currency">$</span>
+            <span class="amount">{{ "%.2f"|format(price) }}</span>
+          </div>
+          <span class="price-label price-{{ price_class }}">{{ price_label }}</span>
+        </div>
+
+        <!-- Why This Gift -->
+        <div class="explanation-box">
+          <h4>💡 Why You'll Love It</h4>
+          <p>{{ row.why }}</p>
+        </div>
+
+        <!-- Call to Action -->
+        <button class="btn-add-cart">🛒 Add to Cart</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Recommendation Insights -->
+  <div class="insights-card">
+    <h3>💝 Cupid's Selection Insights</h3>
+    <div class="insights-content">
+      <p>✨ <strong>AI Algorithm at Work:</strong> These recommendations were generated based on customer preferences, chocolate type affinities, and historical rating patterns.</p>
+      <p>🎯 <strong>Perfect for Valentine's Day:</strong> Each selection combines quality, taste profile, and emotional appeal to create memorable moments.</p>
+      <p>❤️ <strong>Gift with Impact:</strong> Chocolate is more than a treat—it's a gesture of love. Cupid ensures every recommendation carries meaning.</p>
+    </div>
+  </div>
 </section>
 {% endif %}
+
+<style>
+  .page-header h1 {
+    background: linear-gradient(135deg, #ff6b9d, #c44569);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Form Styles */
+  .recommender-form-card {
+    background: linear-gradient(135deg, #fff5f8 0%, #ffe6f0 100%);
+    border: 2px solid #ff6b9d;
+    margin-bottom: 30px;
+  }
+
+  .form-title {
+    text-align: center;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid #ff6b9d;
+  }
+
+  .form-title h2 {
+    margin: 0 0 8px 0;
+    color: #c44569;
+  }
+
+  .form-title p {
+    margin: 0;
+    color: #7f8c8d;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    font-weight: 600;
+    color: #c44569;
+    margin-bottom: 10px;
+    font-size: 1.05em;
+  }
+
+  .form-group select {
+    padding: 12px;
+    border: 2px solid #ff6b9d;
+    border-radius: 8px;
+    font-size: 1em;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .form-group select:hover,
+  .form-group select:focus {
+    border-color: #c44569;
+    box-shadow: 0 0 0 3px rgba(196, 69, 105, 0.1);
+    outline: none;
+  }
+
+  .btn-recommend {
+    background: linear-gradient(135deg, #ff6b9d, #c44569);
+    color: white;
+    border: none;
+    padding: 14px 40px;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+  }
+
+  .btn-recommend:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(196, 69, 105, 0.3);
+  }
+
+  /* Recommendations Section */
+  .recommendations-section {
+    margin-top: 30px;
+  }
+
+  .recommendations-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .recommendations-header h2 {
+    color: #c44569;
+    margin: 0 0 8px 0;
+  }
+
+  .recommendations-subtitle {
+    color: #7f8c8d;
+    margin: 0;
+  }
+
+  /* Gift Card Grid */
+  .recommendations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+  }
+
+  .gift-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+  }
+
+  .gift-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(196, 69, 105, 0.2);
+    border-color: #ff6b9d;
+  }
+
+  .gift-card-header {
+    background: linear-gradient(135deg, #ff6b9d, #c44569);
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .rank-badge {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.9em;
+  }
+
+  .category-badge {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: 600;
+  }
+
+  .gift-card-content {
+    padding: 20px;
+  }
+
+  .product-name {
+    margin: 0 0 15px 0;
+    color: #2c3e50;
+    font-size: 1.2em;
+  }
+
+  /* Rating Section */
+  .rating-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+
+  .stars {
+    display: flex;
+    gap: 4px;
+  }
+
+  .star {
+    font-size: 1.2em;
+  }
+
+  .star.filled {
+    color: #ffc107;
+  }
+
+  .star.empty {
+    color: #ddd;
+  }
+
+  .rating-value {
+    color: #7f8c8d;
+    font-weight: 600;
+  }
+
+  /* Price Section */
+  .price-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #ecf0f1;
+  }
+
+  .price-display {
+    display: flex;
+    align-items: baseline;
+  }
+
+  .currency {
+    font-size: 0.9em;
+    color: #7f8c8d;
+    margin-right: 4px;
+  }
+
+  .amount {
+    font-size: 1.8em;
+    font-weight: 700;
+    color: #c44569;
+  }
+
+  .price-label {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: 600;
+  }
+
+  .price-label.budget {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .price-label.standard {
+    background: #cce5ff;
+    color: #004085;
+  }
+
+  .price-label.premium {
+    background: #ffe6f0;
+    color: #c44569;
+  }
+
+  /* Explanation Box */
+  .explanation-box {
+    background: linear-gradient(135deg, #f5f7ff 0%, #f0e6ff 100%);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #667eea;
+  }
+
+  .explanation-box h4 {
+    margin: 0 0 8px 0;
+    color: #667eea;
+    font-size: 0.95em;
+  }
+
+  .explanation-box p {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 0.9em;
+    line-height: 1.5;
+  }
+
+  /* Button */
+  .btn-add-cart {
+    width: 100%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .btn-add-cart:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  /* Insights Card */
+  .insights-card {
+    background: linear-gradient(135deg, #fff5f8 0%, #ffe6f0 100%);
+    padding: 30px;
+    border-radius: 12px;
+    border: 2px solid #ff6b9d;
+    margin-top: 30px;
+  }
+
+  .insights-card h3 {
+    color: #c44569;
+    margin-top: 0;
+    text-align: center;
+  }
+
+  .insights-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+  }
+
+  .insights-content p {
+    color: #2c3e50;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .insights-content strong {
+    color: #c44569;
+  }
+
+  @media (max-width: 768px) {
+    .recommendations-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .insights-content {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 {% endblock %}

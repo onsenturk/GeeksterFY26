@@ -1,62 +1,554 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="page-header">
-  <h1>Compatibility Copilot</h1>
-  <p>Compare personality traits and interests for matchmaking insights.</p>
+  <h1>💘 Cupid's Compatibility Copilot</h1>
+  <p>Let our AI algorithm analyze hearts and find perfect matches!</p>
 </section>
 
-<section class="card">
-  <form method="post" class="form two-column">
-    <label>
-      User A
-      <select name="user_a" required>
-        {% for user in users %}
-        <option value="{{ user.user_id }}">{{ user.user_id }} ({{ user.age }}, {{ user.location_region }})</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>
-      User B
-      <select name="user_b" required>
-        {% for user in users %}
-        <option value="{{ user.user_id }}">{{ user.user_id }} ({{ user.age }}, {{ user.location_region }})</option>
-        {% endfor %}
-      </select>
-    </label>
-    <button type="submit" class="button">Analyze</button>
+<section class="card match-form-card">
+  <form method="post" class="match-form">
+    <div class="form-title">
+      <h2>🔍 Find Your Perfect Match</h2>
+      <p>Select two souls and let Cupid work his magic...</p>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="user_a">💕 First Heart</label>
+        <select name="user_a" id="user_a" required>
+          <option value="">Select a person...</option>
+          {% for user in users %}
+          <option value="{{ user.user_id }}">
+            {{ user.user_id }} • {{ user.age }}yo • {{ user.location_region }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="user_b">💕 Second Heart</label>
+        <select name="user_b" id="user_b" required>
+          <option value="">Select a person...</option>
+          {% for user in users %}
+          <option value="{{ user.user_id }}">
+            {{ user.user_id }} • {{ user.age }}yo • {{ user.location_region }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn-analyze">🎯 Analyze Compatibility</button>
   </form>
 </section>
 
 {% if result %}
-<section class="card">
-  <h2>Match Report</h2>
-  <div class="score">Compatibility Score: {{ result.score }}%</div>
-  <div class="traits">
-    <div>
-      <h3>{{ result.user_a.user_id }}</h3>
-      <p>O: {{ result.user_a.openness }}</p>
-      <p>C: {{ result.user_a.conscientiousness }}</p>
-      <p>E: {{ result.user_a.extraversion }}</p>
-      <p>A: {{ result.user_a.agreeableness }}</p>
-      <p>N: {{ result.user_a.neuroticism }}</p>
+<section class="card match-results">
+  <!-- Compatibility Score Heart Meter -->
+  <div class="compatibility-meter">
+    <div class="heart-container">
+      <div class="heart-meter-bg">
+        <div class="heart-meter-fill" style="width: {{ result.score }}%">
+          <span class="heart-meter-label">{{ result.score }}%</span>
+        </div>
+      </div>
+      <div class="heart-icon" style="opacity: {{ (result.score / 100) * 1 }};">💕</div>
     </div>
-    <div>
-      <h3>{{ result.user_b.user_id }}</h3>
-      <p>O: {{ result.user_b.openness }}</p>
-      <p>C: {{ result.user_b.conscientiousness }}</p>
-      <p>E: {{ result.user_b.extraversion }}</p>
-      <p>A: {{ result.user_b.agreeableness }}</p>
-      <p>N: {{ result.user_b.neuroticism }}</p>
+    <div class="score-interpretation">
+      {% if result.score >= 80 %}
+        <p class="interpretation-text perfect">🎊 PERFECT MATCH! Cupid's arrow has struck true!</p>
+      {% elif result.score >= 60 %}
+        <p class="interpretation-text great">💚 GREAT POTENTIAL! Strong foundations for love!</p>
+      {% elif result.score >= 40 %}
+        <p class="interpretation-text good">💛 PROMISING! There's chemistry here!</p>
+      {% else %}
+        <p class="interpretation-text fair">💙 FRIENDSHIP VIBES! Maybe not romantic, but great friends!</p>
+      {% endif %}
     </div>
   </div>
-  <div>
-    <h3>Shared Interests</h3>
+
+  <!-- Personality Traits Comparison -->
+  <div class="traits-section">
+    <h2>🧠 Personality Traits Breakdown</h2>
+    <div class="traits-container">
+      <!-- User A Traits -->
+      <div class="user-traits">
+        <h3>{{ result.user_a.user_id }} 👤</h3>
+        <div class="trait-bars">
+          <div class="trait-item">
+            <div class="trait-label">
+              <span class="trait-name">Openness (O)</span>
+              <span class="trait-value">{{ result.user_a.openness }}%</span>
+            </div>
+            <div class="trait-bar">
+              <div class="trait-fill openness" style="width: {{ result.user_a.openness }}%"></div>
+            </div>
+            <p class="trait-desc">Adventure & creativity</p>
+          </div>
+          <div class="trait-item">
+            <div class="trait-label">
+              <span class="trait-name">Conscientiousness (C)</span>
+              <span class="trait-value">{{ result.user_a.conscientiousness }}%</span>
+            </div>
+            <div class="trait-bar">
+              <div class="trait-fill conscientiousness" style="width: {{ result.user_a.conscientiousness }}%"></div>
+            </div>
+            <p class="trait-desc">Responsibility & organization</p>
+          </div>
+          <div class="trait-item">
+            <div class="trait-label">
+              <span class="trait-name">Extraversion (E)</span>
+              <span class="trait-value">{{ result.user_a.extraversion }}%</span>
+            </div>
+            <div class="trait-bar">
+              <div class="trait-fill extraversion" style="width: {{ result.user_a.extraversion }}%"></div>
+            </div>
+            <p class="trait-desc">Social & outgoing</p>
+          </div>
+          <div class="trait-item">
+            <div class="trait-label">
+              <span class="trait-name">Agreeableness (A)</span>
+              <span class="trait-value">{{ result.user_a.agreeableness }}%</span>
+            </div>
+            <div class="trait-bar">
+              <div class="trait-fill agreeableness" style="width: {{ result.user_a.agreeableness }}%"></div>
+            </div>
+            <p class="trait-desc">Compassion & kindness</p>
+          </div>
+          <div class="trait-item">
+            <div class="trait-label">
+              <span class="trait-name">Neuroticism (N)</span>
+              <span class="trait-value">{{ result.user_a.neuroticism }}%</span>
+            </div>
+            <div class="trait-bar">
+              <div class="trait-fill neuroticism" style="width: {{ result.user_a.neuroticism }}%"></div>
+            </div>
+            <p class="trait-desc">Sensitivity & emotional</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- User B Traits -->
+      <div class="user-traits">
+        <h3>{{ result.user_b.user_id }} 👤</h3>
+        <div class="trait-bars">
+          <div class="trait-item">
+            <div class="trait-label">
+              <span class="trait-name">Openness (O)</span>
+              <span class="trait-value">{{ result.user_b.openness }}%</span>
+            </div>
+            <div class="trait-bar">
+              <div class="trait-fill openness" style="width: {{ result.user_b.openness }}%"></div>
+            </div>
+            <p class="trait-desc">Adventure & creativity</p>
+          </div>
+          <div class="trait-item">
+            <div class="trait-label">
+              <span class="trait-name">Conscientiousness (C)</span>
+              <span class="trait-value">{{ result.user_b.conscientiousness }}%</span>
+            </div>
+            <div class="trait-bar">
+              <div class="trait-fill conscientiousness" style="width: {{ result.user_b.conscientiousness }}%"></div>
+            </div>
+            <p class="trait-desc">Responsibility & organization</p>
+          </div>
+          <div class="trait-item">
+            <div class="trait-label">
+              <span class="trait-name">Extraversion (E)</span>
+              <span class="trait-value">{{ result.user_b.extraversion }}%</span>
+            </div>
+            <div class="trait-bar">
+              <div class="trait-fill extraversion" style="width: {{ result.user_b.extraversion }}%"></div>
+            </div>
+            <p class="trait-desc">Social & outgoing</p>
+          </div>
+          <div class="trait-item">
+            <div class="trait-label">
+              <span class="trait-name">Agreeableness (A)</span>
+              <span class="trait-value">{{ result.user_b.agreeableness }}%</span>
+            </div>
+            <div class="trait-bar">
+              <div class="trait-fill agreeableness" style="width: {{ result.user_b.agreeableness }}%"></div>
+            </div>
+            <p class="trait-desc">Compassion & kindness</p>
+          </div>
+          <div class="trait-item">
+            <div class="trait-label">
+              <span class="trait-name">Neuroticism (N)</span>
+              <span class="trait-value">{{ result.user_b.neuroticism }}%</span>
+            </div>
+            <div class="trait-bar">
+              <div class="trait-fill neuroticism" style="width: {{ result.user_b.neuroticism }}%"></div>
+            </div>
+            <p class="trait-desc">Sensitivity & emotional</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shared Interests -->
+  <div class="interests-section">
+    <h2>🎯 Shared Interests & Compatibility Factors</h2>
     {% if result.overlap %}
-      <p>{{ result.overlap | join(", ") }}</p>
+      <div class="interests-grid">
+        {% for interest in result.overlap %}
+        <div class="interest-tag">✨ {{ interest }}</div>
+        {% endfor %}
+      </div>
     {% else %}
-      <p>No overlap found yet.</p>
+      <p class="no-overlap">💭 Different interests can be exciting! Opposites sometimes attract.</p>
     {% endif %}
+  </div>
+
+  <!-- Match Insights -->
+  <div class="insights-box">
+    <h3>💡 Cupid's Matchmaking Insights</h3>
+    <ul class="insights-list">
+      <li>💚 <strong>Emotional Compatibility:</strong> {% if result.user_a.neuroticism + result.user_b.neuroticism < 100 %}Both grounded{% else %}Both emotionally expressive{% endif %}</li>
+      <li>🌟 <strong>Social Dynamics:</strong> {% if result.user_a.extraversion + result.user_b.extraversion < 100 %}Introverted pair{% elif result.user_a.extraversion + result.user_b.extraversion > 150 %}Extroverted duo{% else %}Balanced mix{% endif %}</li>
+      <li>🎨 <strong>Adventure Level:</strong> {% if result.user_a.openness + result.user_b.openness > 140 %}Two free spirits!{% elif result.user_a.openness + result.user_b.openness < 80 %}Prefer stability & tradition{% else %}Balanced approach to adventure{% endif %}</li>
+      <li>🤝 <strong>Problem-Solving:</strong> {% if result.user_a.conscientiousness > 60 and result.user_b.conscientiousness > 60 %}Both organized & reliable{% elif result.user_a.conscientiousness < 40 and result.user_b.conscientiousness < 40 %}Spontaneous & flexible{% else %}One partner keeps things grounded{% endif %}</li>
+    </ul>
   </div>
 </section>
 {% endif %}
+
+<style>
+  .page-header h1 {
+    background: linear-gradient(135deg, #ff6b9d, #c44569);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .match-form-card {
+    background: linear-gradient(135deg, #fff5f8 0%, #ffe6f0 100%);
+    border: 2px solid #ff6b9d;
+  }
+
+  .form-title {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid #ff6b9d;
+  }
+
+  .form-title h2 {
+    margin: 0 0 8px 0;
+    color: #c44569;
+  }
+
+  .form-title p {
+    margin: 0;
+    color: #7f8c8d;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 25px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-group label {
+    font-weight: 600;
+    color: #c44569;
+    margin-bottom: 8px;
+    font-size: 1.1em;
+  }
+
+  .form-group select {
+    padding: 12px;
+    border: 2px solid #ff6b9d;
+    border-radius: 8px;
+    font-size: 1em;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .form-group select:hover,
+  .form-group select:focus {
+    border-color: #c44569;
+    box-shadow: 0 0 0 3px rgba(196, 69, 105, 0.1);
+    outline: none;
+  }
+
+  .btn-analyze {
+    background: linear-gradient(135deg, #ff6b9d, #c44569);
+    color: white;
+    border: none;
+    padding: 14px 40px;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+  }
+
+  .btn-analyze:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(196, 69, 105, 0.3);
+  }
+
+  .match-results {
+    margin-top: 30px;
+  }
+
+  /* Compatibility Meter */
+  .compatibility-meter {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 30px;
+    background: linear-gradient(135deg, #fff5f8 0%, #fff9f0 100%);
+    border-radius: 12px;
+    border: 2px solid #ff6b9d;
+  }
+
+  .heart-container {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  .heart-meter-bg {
+    width: 100%;
+    height: 40px;
+    background: #ecccdb;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .heart-meter-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b9d, #c44569);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: width 0.8s ease;
+  }
+
+  .heart-meter-label {
+    color: white;
+    font-weight: 700;
+    font-size: 1.2em;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .heart-icon {
+    font-size: 3em;
+    margin-top: 15px;
+    animation: heartbeat 1.5s infinite;
+  }
+
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+  }
+
+  .score-interpretation {
+    margin-top: 20px;
+  }
+
+  .interpretation-text {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.2em;
+  }
+
+  .interpretation-text.perfect {
+    color: #27ae60;
+  }
+
+  .interpretation-text.great {
+    color: #2ecc71;
+  }
+
+  .interpretation-text.good {
+    color: #f39c12;
+  }
+
+  .interpretation-text.fair {
+    color: #3498db;
+  }
+
+  /* Traits Section */
+  .traits-section {
+    margin-bottom: 40px;
+  }
+
+  .traits-section h2 {
+    color: #c44569;
+    margin-bottom: 25px;
+    text-align: center;
+  }
+
+  .traits-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+  }
+
+  .user-traits {
+    background: linear-gradient(135deg, #f5f7ff 0%, #f0e6ff 100%);
+    padding: 25px;
+    border-radius: 12px;
+    border: 2px solid #667eea;
+  }
+
+  .user-traits h3 {
+    color: #667eea;
+    margin-top: 0;
+    text-align: center;
+  }
+
+  .trait-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .trait-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .trait-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .trait-name {
+    color: #2c3e50;
+  }
+
+  .trait-value {
+    color: #667eea;
+    font-weight: 700;
+  }
+
+  .trait-bar {
+    height: 20px;
+    background: #ecf0f1;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .trait-fill {
+    height: 100%;
+    transition: width 0.6s ease;
+  }
+
+  .trait-fill.openness {
+    background: linear-gradient(90deg, #667eea, #764ba2);
+  }
+
+  .trait-fill.conscientiousness {
+    background: linear-gradient(90deg, #f093fb, #f5576c);
+  }
+
+  .trait-fill.extraversion {
+    background: linear-gradient(90deg, #4facfe, #00f2fe);
+  }
+
+  .trait-fill.agreeableness {
+    background: linear-gradient(90deg, #43e97b, #38f9d7);
+  }
+
+  .trait-fill.neuroticism {
+    background: linear-gradient(90deg, #fa709a, #fee140);
+  }
+
+  .trait-desc {
+    font-size: 0.85em;
+    color: #7f8c8d;
+    margin: 4px 0 0 0;
+    font-style: italic;
+  }
+
+  /* Interests Section */
+  .interests-section {
+    margin-bottom: 40px;
+    padding: 25px;
+    background: linear-gradient(135deg, #fff5f8 0%, #ffe6f0 100%);
+    border-radius: 12px;
+    border: 2px solid #ff6b9d;
+  }
+
+  .interests-section h2 {
+    color: #c44569;
+    margin-top: 0;
+  }
+
+  .interests-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+
+  .interest-tag {
+    background: linear-gradient(135deg, #ff6b9d, #c44569);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 20px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.95em;
+  }
+
+  .no-overlap {
+    color: #7f8c8d;
+    font-style: italic;
+  }
+
+  /* Insights Box */
+  .insights-box {
+    background: linear-gradient(135deg, #e8f4f8 0%, #f0e6ff 100%);
+    padding: 25px;
+    border-radius: 12px;
+    border-left: 5px solid #667eea;
+  }
+
+  .insights-box h3 {
+    color: #667eea;
+    margin-top: 0;
+  }
+
+  .insights-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .insights-list li {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+    color: #2c3e50;
+    line-height: 1.6;
+  }
+
+  .insights-list li:last-child {
+    border-bottom: none;
+  }
+
+  @media (max-width: 768px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .traits-container {
+      grid-template-columns: 1fr;
+    }
+
+    .interests-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>
 {% endblock %}
