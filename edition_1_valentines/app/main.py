@@ -67,8 +67,16 @@ def love_letter_submit(
     tone: str = Form("light and professional"),
 ):
     customers = list_customers(60)
-    customer, events, letter_text = love_letter_with_ai(customer_id, tone)
-    letter = {"customer": customer, "events": events, "text": letter_text}
+    customer, events, letter_text, source, error = love_letter_with_ai(
+        customer_id, tone
+    )
+    letter = {
+        "customer": customer,
+        "events": events,
+        "text": letter_text,
+        "source": source,
+        "error": error,
+    }
     return templates.TemplateResponse(
         "love_letter.html",
         {"request": request, "customers": customers, "letter": letter},

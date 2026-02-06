@@ -81,6 +81,62 @@ def _call_openai_chat(messages, temperature=0.2, max_tokens=400):
         return None
 
 
+def _call_openai_chat_with_error(messages, temperature=0.2, max_tokens=400):
+    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    azure_key = os.getenv("AZURE_OPENAI_API_KEY")
+    azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+    source = "openai"
+
+    if azure_endpoint and azure_key and azure_deployment:
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+        url = (
+            f"{azure_endpoint.rstrip('/')}/openai/deployments/"
+            f"{azure_deployment}/chat/completions?api-version={api_version}"
+        )
+        payload = {
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        headers = {
+            "api-key": azure_key,
+            "Content-Type": "application/json",
+        }
+        source = "azure"
+    else:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return None, "none", "No API key configured"
+
+        base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        url = f"{base_url}/chat/completions"
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        return data["choices"][0]["message"]["content"], source, None
+    except Exception as exc:
+        return None, source, str(exc)
+
+
 def generate_recommendation_explanations(customer, recommendations):
     if not recommendations:
         return [], "heuristic"
@@ -330,7 +386,7 @@ def generate_experience_summary(details):
 
 def generate_love_letter(customer, events, tone):
     if not customer:
-        return "We could not find that customer yet. Try another profile."
+        return "We could not find that customer yet. Try another profile.", "heuristic", None
 
     payload = {
         "customer": {
@@ -364,9 +420,11 @@ def generate_love_letter(customer, events, tone):
                 "content": f"Write the letter using this context: {json.dumps(payload)}",
             },
         ]
-        response = _call_openai_chat(messages, temperature=0.6, max_tokens=260)
+        response, source, error = _call_openai_chat_with_error(
+            messages, temperature=0.6, max_tokens=260
+        )
         if response:
-            return response.strip()
+            return response.strip(), source, None
 
     name = customer.get("first_name", "there")
     location = f"{customer.get('city', '')}, {customer.get('country_code', '')}".strip(", ")
@@ -389,4 +447,4 @@ def generate_love_letter(customer, events, tone):
     line_four = "May your Valentine be rich in smiles, surprises, and chocolate." 
     closing = "With affection,\nCupid Chocolate Company"
 
-    return "\n\n".join([line_one, line_two, line_three, line_four, closing])
+    return "\n\n".join([line_one, line_two, line_three, line_four, closing]), "heuristic", error

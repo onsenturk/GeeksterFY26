@@ -28,6 +28,12 @@
 {% if letter and letter.customer %}
 <section class="card">
   <h2>Letter Preview</h2>
+  {% if letter.source %}
+  <p class="muted">LLM source: {{ letter.source }}</p>
+  {% endif %}
+  {% if letter.error %}
+  <p class="muted">LLM error: {{ letter.error }}</p>
+  {% endif %}
   <div class="letter">
     {% if letter.text %}
       {% for paragraph in letter.text.split('\n\n') %}

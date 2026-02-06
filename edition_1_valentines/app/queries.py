@@ -75,8 +75,8 @@ def love_letter_with_ai(customer_id, tone):
     customer, events = love_letter_data(customer_id)
     customer_data = dict(customer) if customer else None
     event_data = [dict(event) for event in events] if events else []
-    letter = generate_love_letter(customer_data, event_data, tone)
-    return customer, events, letter
+    letter, source, error = generate_love_letter(customer_data, event_data, tone)
+    return customer, events, letter, source, error
 
 
 def recommend_products(customer_id, limit=5):
