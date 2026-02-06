@@ -6,7 +6,7 @@
 </section>
 
 <section class="card">
-  <form method="post" class="form">
+  <form method="post" class="form" id="loveLetterForm">
     <label>
       Choose a customer
       <select name="customer_id" required>
@@ -24,6 +24,16 @@
     <button type="submit" class="button">Generate</button>
   </form>
 </section>
+
+<div class="thinking-overlay" id="thinkingOverlay" aria-hidden="true">
+  <div class="thinking-card" role="status" aria-live="polite">
+    <div class="spinner"></div>
+    <div>
+      <div class="thinking-title">Crafting your love letter...</div>
+      <div class="muted">Gathering sweet details and a dash of humor.</div>
+    </div>
+  </div>
+</div>
 
 {% if letter and letter.customer %}
 <section class="card">
@@ -66,4 +76,15 @@
   </div>
 </section>
 {% endif %}
+
+<script>
+  const form = document.getElementById('loveLetterForm');
+  const overlay = document.getElementById('thinkingOverlay');
+  if (form && overlay) {
+    form.addEventListener('submit', () => {
+      overlay.setAttribute('aria-hidden', 'false');
+      overlay.classList.add('show');
+    });
+  }
+</script>
 {% endblock %}

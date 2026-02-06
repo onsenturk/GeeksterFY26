@@ -41,7 +41,7 @@ def _call_openai_chat(messages, temperature=0.2, max_tokens=400):
         payload = {
             "messages": messages,
             "temperature": temperature,
-            "max_tokens": max_tokens,
+            "max_completion_tokens": max_tokens,
         }
         headers = {
             "api-key": azure_key,
@@ -96,7 +96,7 @@ def _call_openai_chat_with_error(messages, temperature=0.2, max_tokens=400):
         payload = {
             "messages": messages,
             "temperature": temperature,
-            "max_tokens": max_tokens,
+            "max_completion_tokens": max_tokens,
         }
         headers = {
             "api-key": azure_key,
@@ -133,6 +133,15 @@ def _call_openai_chat_with_error(messages, temperature=0.2, max_tokens=400):
         with urllib.request.urlopen(req, timeout=20) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         return data["choices"][0]["message"]["content"], source, None
+    except urllib.error.HTTPError as exc:
+        try:
+            body = exc.read().decode("utf-8")
+        except Exception:
+            body = ""
+        detail = f"HTTP {exc.code}: {exc.reason}"
+        if body:
+            detail = f"{detail} | {body}"
+        return None, source, detail
     except Exception as exc:
         return None, source, str(exc)
 
@@ -166,7 +175,7 @@ def generate_recommendation_explanations(customer, recommendations):
                 "content": (
                     "You are a helpful assistant that writes short reasons for gift "
                     "recommendations. Return JSON with a 'reasons' array. Each reason "
-                    "should be one sentence, <= 18 words."
+                    "should be one sentence, <= 18 words. Write in English."
                 ),
             },
             {
@@ -391,15 +400,21 @@ def generate_love_letter(customer, events, tone):
     payload = {
         "customer": {
             "first_name": customer.get("first_name"),
+            "last_name": customer.get("last_name"),
             "city": customer.get("city"),
+            "state_province": customer.get("state_province"),
             "country_code": customer.get("country_code"),
+            "age_band": customer.get("age_band"),
             "loyalty_tier": customer.get("loyalty_tier"),
+            "preferred_language": customer.get("preferred_language"),
+            "consent_marketing": customer.get("consent_marketing"),
         },
         "recent_gifts": [
             {
                 "product_name": event.get("product_name"),
                 "gift_persona": event.get("gift_persona"),
                 "delivery_speed": event.get("delivery_speed"),
+                "rating": event.get("rating"),
             }
             for event in events or []
         ],
@@ -412,7 +427,10 @@ def generate_love_letter(customer, events, tone):
                 "role": "system",
                 "content": (
                     "You write short, warm love letters for a chocolate brand. "
-                    "Keep it professional, light, and a bit funny. 120-160 words."
+                    "Keep it professional, light, and a bit funny. 120-160 words. "
+                    "Write in English. "
+                    "Must include the customer's first name, city/country, loyalty tier, "
+                    "and mention 1-2 recent products if available."
                 ),
             },
             {
@@ -427,12 +445,16 @@ def generate_love_letter(customer, events, tone):
             return response.strip(), source, None
 
     name = customer.get("first_name", "there")
-    location = f"{customer.get('city', '')}, {customer.get('country_code', '')}".strip(", ")
+    location = f"{customer.get('city', '')}, {customer.get('state_province', '')}".strip(", ")
+    if customer.get("country_code"):
+        location = f"{location}, {customer.get('country_code')}".strip(", ")
     persona = None
     delivery = None
+    recent_products = []
     if events:
         persona = events[0].get("gift_persona")
         delivery = events[0].get("delivery_speed")
+        recent_products = [event.get("product_name") for event in events if event.get("product_name")]
 
     line_one = f"Dear {name},"
     line_two = (
@@ -444,6 +466,8 @@ def generate_love_letter(customer, events, tone):
     if delivery:
         line_three += f" with {delivery} delivery"
     line_three += "."
+    if recent_products:
+        line_three += f" Recent favorites include {', '.join(recent_products[:2])}."
     line_four = "May your Valentine be rich in smiles, surprises, and chocolate." 
     closing = "With affection,\nCupid Chocolate Company"
 
