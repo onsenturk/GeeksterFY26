@@ -83,28 +83,177 @@ def love_letter_with_ai(customer_id, tone):
 def recommend_products(customer_id, limit=5):
     conn = get_db()
     try:
-        rows = conn.execute(
-            "SELECT product_name, product_category, unit_price, rating, "
-            "gift_persona, delivery_speed "
-            "FROM gift_recommender "
-            "WHERE customer_id = ? "
-            "AND (returned_flag = 'False' OR returned_flag IS NULL) "
-            "ORDER BY rating DESC, event_ts DESC LIMIT ?",
-            (customer_id, limit),
-        ).fetchall()
+        profile = conn.execute(
+            "SELECT AVG(avg_order_value_user) AS avg_order_value "
+            "FROM gift_recommender WHERE customer_id = ?",
+            (customer_id,),
+        ).fetchone()
 
-        if rows:
-            return rows
+        customer_profile = conn.execute(
+            "SELECT loyalty_tier, age_band, country_code "
+            "FROM dim_customer WHERE customer_id = ?",
+            (customer_id,),
+        ).fetchone()
+
+        top_persona_row = conn.execute(
+            "SELECT gift_persona, COUNT(*) AS cnt "
+            "FROM gift_recommender WHERE customer_id = ? "
+            "GROUP BY gift_persona ORDER BY cnt DESC LIMIT 1",
+            (customer_id,),
+        ).fetchone()
+
+        top_delivery_row = conn.execute(
+            "SELECT delivery_speed, COUNT(*) AS cnt "
+            "FROM gift_recommender WHERE customer_id = ? "
+            "GROUP BY delivery_speed ORDER BY cnt DESC LIMIT 1",
+            (customer_id,),
+        ).fetchone()
+
+        top_category_row = conn.execute(
+            "SELECT product_category, COUNT(*) AS cnt "
+            "FROM gift_recommender WHERE customer_id = ? "
+            "GROUP BY product_category ORDER BY cnt DESC LIMIT 1",
+            (customer_id,),
+        ).fetchone()
 
         rows = conn.execute(
             "SELECT product_name, product_category, unit_price, AVG(rating) AS rating, "
-            "NULL AS gift_persona, NULL AS delivery_speed "
+            "AVG(discount_pct) AS discount_pct, AVG(list_price) AS list_price, "
+            "gift_persona, delivery_speed, MAX(event_ts) AS last_event "
             "FROM gift_recommender "
-            "GROUP BY product_name, product_category, unit_price "
-            "ORDER BY rating DESC LIMIT ?",
-            (limit,),
+            "WHERE customer_id = ? "
+            "AND (returned_flag = 'False' OR returned_flag IS NULL) "
+            "GROUP BY product_name, product_category, unit_price, gift_persona, delivery_speed "
+            "ORDER BY last_event DESC, rating DESC LIMIT ?",
+            (customer_id, limit),
         ).fetchall()
-        return rows
+
+        if not rows and customer_profile:
+            loyalty_tier = customer_profile["loyalty_tier"]
+            age_band = customer_profile["age_band"]
+            country_code = customer_profile["country_code"]
+            category_filter = top_category_row["product_category"] if top_category_row else None
+
+            tier_sql = (
+                "SELECT gr.product_name, gr.product_category, gr.unit_price, "
+                "AVG(gr.rating) AS rating, AVG(gr.discount_pct) AS discount_pct, "
+                "AVG(gr.list_price) AS list_price, gr.gift_persona, gr.delivery_speed "
+                "FROM gift_recommender gr "
+                "JOIN dim_customer dc ON gr.customer_id = dc.customer_id "
+                "WHERE dc.loyalty_tier = ? "
+            )
+
+            params = [loyalty_tier]
+            if age_band:
+                tier_sql += "AND dc.age_band = ? "
+                params.append(age_band)
+            if country_code:
+                tier_sql += "AND dc.country_code = ? "
+                params.append(country_code)
+            if category_filter:
+                tier_sql += "AND gr.product_category = ? "
+                params.append(category_filter)
+
+            tier_sql += (
+                "GROUP BY gr.product_name, gr.product_category, gr.unit_price, "
+                "gr.gift_persona, gr.delivery_speed "
+                "ORDER BY rating DESC LIMIT ?"
+            )
+            params.append(limit)
+            rows = conn.execute(tier_sql, params).fetchall()
+
+        if not rows and top_persona_row:
+            rows = conn.execute(
+                "SELECT product_name, product_category, unit_price, AVG(rating) AS rating, "
+                "AVG(discount_pct) AS discount_pct, AVG(list_price) AS list_price, "
+                "gift_persona, delivery_speed "
+                "FROM gift_recommender "
+                "WHERE gift_persona = ? "
+                "GROUP BY product_name, product_category, unit_price, gift_persona, delivery_speed "
+                "ORDER BY rating DESC LIMIT ?",
+                (top_persona_row["gift_persona"], limit),
+            ).fetchall()
+
+        if not rows:
+            rows = conn.execute(
+                "SELECT product_name, product_category, unit_price, AVG(rating) AS rating, "
+                "AVG(discount_pct) AS discount_pct, AVG(list_price) AS list_price, "
+                "gift_persona, delivery_speed "
+                "FROM gift_recommender "
+                "GROUP BY product_name, product_category, unit_price, gift_persona, delivery_speed "
+                "ORDER BY rating DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+
+        recommendations = []
+        target_price = None
+        if profile and profile["avg_order_value"]:
+            target_price = float(profile["avg_order_value"])
+
+        ratings = [float(row["rating"]) for row in rows if row["rating"] is not None]
+        discounts = [float(row["discount_pct"]) for row in rows if row["discount_pct"] is not None]
+        prices = [float(row["unit_price"]) for row in rows if row["unit_price"] is not None]
+
+        rating_min = min(ratings) if ratings else 0.0
+        rating_max = max(ratings) if ratings else 5.0
+        discount_min = min(discounts) if discounts else 0.0
+        discount_max = max(discounts) if discounts else 50.0
+        price_min = min(prices) if prices else 0.0
+        price_max = max(prices) if prices else 1.0
+
+        seen = set()
+        for row in rows:
+            rating = row["rating"]
+            discount = row["discount_pct"]
+            unit_price = row["unit_price"]
+            persona = row["gift_persona"]
+            delivery = row["delivery_speed"]
+
+            product_key = (row["product_name"], row["product_category"]) if row["product_name"] else None
+            if product_key in seen:
+                continue
+            if product_key:
+                seen.add(product_key)
+
+            if rating is None or rating_max == rating_min:
+                rating_norm = 0.5
+            else:
+                rating_norm = (float(rating) - rating_min) / (rating_max - rating_min)
+
+            if discount is None or discount_max == discount_min:
+                discount_norm = 0.2
+            else:
+                discount_norm = (float(discount) - discount_min) / (discount_max - discount_min)
+
+            if target_price and unit_price:
+                price_gap = abs(float(unit_price) - target_price) / target_price
+                price_fit = 1.0 - min(price_gap, 1.0)
+            elif unit_price is None or price_max == price_min:
+                price_fit = 0.5
+            else:
+                price_fit = 1.0 - (float(unit_price) - price_min) / (price_max - price_min)
+
+            persona_match = (
+                1.0 if persona and top_persona_row and persona == top_persona_row["gift_persona"] else 0.4
+            )
+            delivery_match = (
+                1.0 if delivery and top_delivery_row and delivery == top_delivery_row["delivery_speed"] else 0.5
+            )
+
+            score = (
+                0.45 * rating_norm
+                + 0.2 * discount_norm
+                + 0.2 * price_fit
+                + 0.1 * persona_match
+                + 0.05 * delivery_match
+            )
+            ai_rating = round(score * 5.0, 2)
+            row_dict = dict(row)
+            row_dict["ai_rating"] = ai_rating
+            recommendations.append(row_dict)
+
+        recommendations.sort(key=lambda item: item["ai_rating"], reverse=True)
+        return recommendations[:limit]
     finally:
         conn.close()
 
@@ -113,8 +262,8 @@ def _get_customer_profile(customer_id):
     conn = get_db()
     try:
         row = conn.execute(
-            "SELECT customer_id, first_name, last_name, loyalty_tier, "
-            "preferred_language "
+            "SELECT customer_id, first_name, last_name, loyalty_tier, age_band, "
+            "country_code, preferred_language "
             "FROM dim_customer WHERE customer_id = ?",
             (customer_id,),
         ).fetchone()

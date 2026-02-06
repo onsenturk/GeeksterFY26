@@ -343,6 +343,53 @@ table th, table td {
   text-align: center;
 }
 
+.thinking-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(249, 244, 239, 0.85);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  backdrop-filter: blur(2px);
+}
+
+.thinking-overlay.show {
+  display: flex;
+}
+
+.thinking-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  max-width: 420px;
+}
+
+.thinking-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid #f2c1ca;
+  border-top-color: var(--accent-dark);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 900px) {
   .site-header {
     flex-direction: column;

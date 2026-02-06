@@ -175,7 +175,7 @@ def generate_recommendation_explanations(customer, recommendations):
                 "content": (
                     "You are a helpful assistant that writes short reasons for gift "
                     "recommendations. Return JSON with a 'reasons' array. Each reason "
-                    "should be one sentence, <= 18 words."
+                    "should be one sentence, <= 18 words. Write in English."
                 ),
             },
             {

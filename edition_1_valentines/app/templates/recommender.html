@@ -6,12 +6,12 @@
 </section>
 
 <section class="card">
-  <form method="post" class="form">
+  <form method="post" class="form" id="recommenderForm">
     <label>
       Choose a customer
       <select name="customer_id" required>
         {% for customer in customers %}
-        <option value="{{ customer.customer_id }}">
+        <option value="{{ customer.customer_id }}" {% if selected_customer_id == customer.customer_id %}selected{% endif %}>
           {{ customer.customer_id }} - {{ customer.first_name }} {{ customer.last_name }}
         </option>
         {% endfor %}
@@ -20,6 +20,16 @@
     <button type="submit" class="button">Recommend</button>
   </form>
 </section>
+
+<div class="thinking-overlay" id="recommenderOverlay" aria-hidden="true">
+  <div class="thinking-card" role="status" aria-live="polite">
+    <div class="spinner"></div>
+    <div>
+      <div class="thinking-title">Finding perfect matches...</div>
+      <div class="muted">Personalizing picks just for this customer.</div>
+    </div>
+  </div>
+</div>
 
 {% if recommendations %}
 <section class="card">
@@ -33,7 +43,7 @@
         <th>Product</th>
         <th>Category</th>
         <th>Price</th>
-        <th>Rating</th>
+        <th>AI Rating</th>
         <th>Why this gift</th>
       </tr>
     </thead>
@@ -43,7 +53,7 @@
         <td>{{ row.product_name }}</td>
         <td>{{ row.product_category }}</td>
         <td>{{ "%.2f"|format(row.unit_price or 0) }}</td>
-        <td>{{ "%.1f"|format(row.rating or 0) }}</td>
+        <td>{{ "%.1f"|format(row.ai_rating or 0) }}</td>
         <td class="explanation">{{ row.why }}</td>
       </tr>
       {% endfor %}
@@ -51,4 +61,15 @@
   </table>
 </section>
 {% endif %}
+
+<script>
+  const recForm = document.getElementById('recommenderForm');
+  const recOverlay = document.getElementById('recommenderOverlay');
+  if (recForm && recOverlay) {
+    recForm.addEventListener('submit', () => {
+      recOverlay.setAttribute('aria-hidden', 'false');
+      recOverlay.classList.add('show');
+    });
+  }
+</script>
 {% endblock %}

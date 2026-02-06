@@ -88,7 +88,12 @@ def recommender_form(request: Request):
     customers = list_customers(60)
     return templates.TemplateResponse(
         "recommender.html",
-        {"request": request, "customers": customers, "recommendations": None},
+        {
+            "request": request,
+            "customers": customers,
+            "recommendations": None,
+            "selected_customer_id": None,
+        },
     )
 
 
@@ -103,6 +108,7 @@ def recommender_submit(request: Request, customer_id: str = Form(...)):
             "customers": customers,
             "recommendations": recommendations,
             "explain_mode": mode.get("mode"),
+            "selected_customer_id": customer_id,
         },
     )
 
