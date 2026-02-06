@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <h1>Valentine Experience Planner</h1>
+  <p>Agent-style workflow to plan a full experience.</p>
+</section>
+
+<section class="card">
+  <form method="post" class="form three-column">
+    <label>
+      Budget
+      <input type="number" name="budget" value="{{ budget or 75 }}" step="1" min="10" required />
+    </label>
+    <label>
+      Gift Persona
+      <select name="persona" required>
+        <option value="Partner" {% if persona == "Partner" %}selected{% endif %}>Partner</option>
+        <option value="Friend" {% if persona == "Friend" %}selected{% endif %}>Friend</option>
+        <option value="Family" {% if persona == "Family" %}selected{% endif %}>Family</option>
+        <option value="Self" {% if persona == "Self" %}selected{% endif %}>Self</option>
+      </select>
+    </label>
+    <label>
+      Delivery Speed
+      <select name="delivery_speed" required>
+        <option value="standard" {% if delivery_speed == "standard" %}selected{% endif %}>standard</option>
+        <option value="express" {% if delivery_speed == "express" %}selected{% endif %}>express</option>
+      </select>
+    </label>
+    <label>
+      Destination Region
+      <select name="region" required>
+        {% for item in regions %}
+        <option value="{{ item }}" {% if region == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="button">Build Plan</button>
+  </form>
+</section>
+
+{% if plan %}
+<section class="card">
+  <h2>Plan Summary</h2>
+  <p>{{ plan.summary }}</p>
+  <div class="pill-row">
+    {% if plan.risk_score is not none %}
+    <span class="pill">Supply risk score: {{ plan.risk_score }}</span>
+    {% endif %}
+    {% if plan.delivery.success_rate is not none %}
+    <span class="pill">Delivery success: {{ "%.0f"|format(plan.delivery.success_rate * 100) }}%</span>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <h2>Agent Steps</h2>
+  <div class="step-list">
+    {% for step in plan.steps %}
+    <div class="step-card">
+      <h3>{{ step.title }}</h3>
+      <p class="muted">{{ step.detail }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <h2>Top Gift Options</h2>
+  {% if plan.recommendations %}
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Category</th>
+        <th>Price</th>
+        <th>Rating</th>
+        <th>Delivery</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in plan.recommendations %}
+      <tr>
+        <td>{{ row.product_name }}</td>
+        <td>{{ row.product_category }}</td>
+        <td>{{ "%.2f"|format(row.unit_price or 0) }}</td>
+        <td>{{ "%.1f"|format(row.rating or 0) }}</td>
+        <td>{{ row.delivery_speed }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No options found for that budget and persona.</p>
+  {% endif %}
+</section>
+
+{% if plan.delivery.routing %}
+<section class="card">
+  <h2>Delivery Reliability</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Requests / Min</th>
+        <th>P95 Latency</th>
+        <th>Failure Rate</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ plan.delivery.routing.request_count_per_min }}</td>
+        <td>{{ plan.delivery.routing.p95_latency_ms }}</td>
+        <td>{{ "%.2f"|format(plan.delivery.routing.failure_rate or 0) }}</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

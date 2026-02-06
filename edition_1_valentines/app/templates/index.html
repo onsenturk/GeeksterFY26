@@ -9,31 +9,6 @@
       <a class="button ghost" href="/sales-dashboard">Open Sales Pulse</a>
     </div>
   </div>
-  <div class="hero-card">
-    <h2>Dataset Snapshot</h2>
-    <div class="grid">
-      {% for name, value in counts.items() %}
-      <div class="stat">
-        <div class="stat-label">{{ name }}</div>
-        <div class="stat-value">{{ value }}</div>
-      </div>
-      {% endfor %}
-    </div>
-    <div class="score-row">
-      <div>
-        <div class="stat-label">Avg Rating</div>
-        <div class="stat-value">{{ "%.2f"|format(scores.avg_rating or 0) }}</div>
-      </div>
-      <div>
-        <div class="stat-label">Avg Discount</div>
-        <div class="stat-value">{{ "%.2f"|format(scores.avg_discount or 0) }}</div>
-      </div>
-      <div>
-        <div class="stat-label">Avg Price</div>
-        <div class="stat-value">{{ "%.2f"|format(scores.avg_price or 0) }}</div>
-      </div>
-    </div>
-  </div>
 </section>
 
 <section class="card-grid">
@@ -66,6 +41,16 @@
     <h3>Gift Concierge Bot</h3>
     <p>Suggests gifts using persona and delivery preferences.</p>
     <a href="/gift-concierge">Open</a>
+  </article>
+  <article class="card">
+    <h3>Semantic Product Search</h3>
+    <p>Search products and review signals with semantic matching.</p>
+    <a href="/semantic-search">Open</a>
+  </article>
+  <article class="card">
+    <h3>Valentine Experience Planner</h3>
+    <p>Agent-style workflow for budget, delivery, and persona planning.</p>
+    <a href="/valentine-planner">Open</a>
   </article>
   <article class="card">
     <h3>Supply Chain Optimizer</h3>

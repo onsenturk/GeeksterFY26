@@ -24,6 +24,9 @@
 {% if recommendations %}
 <section class="card">
   <h2>Top Picks</h2>
+  {% if explain_mode %}
+  <p class="muted">Explanation mode: {{ explain_mode }}</p>
+  {% endif %}
   <table>
     <thead>
       <tr>
@@ -31,6 +34,7 @@
         <th>Category</th>
         <th>Price</th>
         <th>Rating</th>
+        <th>Why this gift</th>
       </tr>
     </thead>
     <tbody>
@@ -40,6 +44,7 @@
         <td>{{ row.product_category }}</td>
         <td>{{ "%.2f"|format(row.unit_price or 0) }}</td>
         <td>{{ "%.1f"|format(row.rating or 0) }}</td>
+        <td class="explanation">{{ row.why }}</td>
       </tr>
       {% endfor %}
     </tbody>

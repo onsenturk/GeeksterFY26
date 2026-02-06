@@ -24,6 +24,32 @@ Your mission: Build a solution powered by **Microsoft technologies** that helps 
 
 ---
 
+# ✨ AI Experiences Added
+
+This edition includes three AI-focused experiences to lift the technical depth of the demo:
+
+- **LLM-assisted recommendations**: Explains *why* each gift is a fit (with fallback heuristics).
+- **Semantic product search**: Natural-language search over products + review signals.
+- **Valentine experience planner**: Agent-style workflow for budget, persona, delivery, and region planning.
+
+## Routes
+
+- `/recommender` for explainable recommendations.
+- `/semantic-search` for semantic matching.
+- `/valentine-planner` for the agent-style plan.
+
+## Optional LLM Configuration
+
+Set these environment variables to enable LLM explanations:
+
+- `OPENAI_API_KEY` (required to use the LLM)
+- `OPENAI_MODEL` (optional, default `gpt-4o-mini`)
+- `OPENAI_BASE_URL` (optional, default `https://api.openai.com/v1`)
+
+If no key is set, the app uses rule-based explanations.
+
+---
+
 ## 📅 Event Details
 
 | | Detail |

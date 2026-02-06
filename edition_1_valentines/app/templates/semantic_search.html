@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <h1>Semantic Product Search</h1>
+  <p>Search products and review signals using semantic matching.</p>
+</section>
+
+<section class="card">
+  <form method="post" class="form">
+    <label>
+      Search query
+      <input type="text" name="query" value="{{ query }}" placeholder="dark chocolate for partners with fast delivery" required />
+    </label>
+    <button type="submit" class="button">Search</button>
+  </form>
+  <p class="muted">Review signals are derived from ratings and event history.</p>
+</section>
+
+{% if results is not none %}
+<section class="card">
+  <h2>Results</h2>
+  {% if results %}
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Category</th>
+        <th>Price</th>
+        <th>Rating</th>
+        <th>Reviews</th>
+        <th>Why it matches</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in results %}
+      <tr>
+        <td>{{ row.product_name }}</td>
+        <td>{{ row.category }}</td>
+        <td>{{ "%.2f"|format(row.unit_price or 0) }}</td>
+        <td>{{ "%.1f"|format(row.avg_rating or 0) }}</td>
+        <td>{{ row.review_count or 0 }}</td>
+        <td class="explanation">{{ row.snippet }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No matches yet. Try a different query.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -14,14 +16,19 @@ from .queries import (
     list_customers,
     list_matchmaking_users,
     list_products,
+    list_regions,
     love_letter_data,
+    love_letter_with_ai,
     order_quote,
-    recommend_products,
+    recommend_products_with_explanations,
     sales_overview,
+    semantic_product_search,
     supply_chain_alerts,
+    valentine_experience_plan,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR.parent / ".env")
 
 app = FastAPI(title="Valentine's Day Edition")
 
@@ -54,10 +61,14 @@ def love_letter_form(request: Request):
 
 
 @app.post("/love-letter", response_class=HTMLResponse)
-def love_letter_submit(request: Request, customer_id: str = Form(...)):
+def love_letter_submit(
+    request: Request,
+    customer_id: str = Form(...),
+    tone: str = Form("light and professional"),
+):
     customers = list_customers(60)
-    customer, events = love_letter_data(customer_id)
-    letter = {"customer": customer, "events": events}
+    customer, events, letter_text = love_letter_with_ai(customer_id, tone)
+    letter = {"customer": customer, "events": events, "text": letter_text}
     return templates.TemplateResponse(
         "love_letter.html",
         {"request": request, "customers": customers, "letter": letter},
@@ -76,13 +87,14 @@ def recommender_form(request: Request):
 @app.post("/recommender", response_class=HTMLResponse)
 def recommender_submit(request: Request, customer_id: str = Form(...)):
     customers = list_customers(60)
-    recommendations = recommend_products(customer_id)
+    recommendations, mode = recommend_products_with_explanations(customer_id)
     return templates.TemplateResponse(
         "recommender.html",
         {
             "request": request,
             "customers": customers,
             "recommendations": recommendations,
+            "explain_mode": mode.get("mode"),
         },
     )
 
@@ -187,4 +199,58 @@ def analytics(request: Request):
     return templates.TemplateResponse(
         "analytics.html",
         {"request": request, "counts": counts, "scores": scores},
+    )
+
+
+@app.get("/semantic-search", response_class=HTMLResponse)
+def semantic_search_form(request: Request):
+    return templates.TemplateResponse(
+        "semantic_search.html",
+        {"request": request, "query": "", "results": None},
+    )
+
+
+@app.post("/semantic-search", response_class=HTMLResponse)
+def semantic_search_submit(request: Request, query: str = Form(...)):
+    results = semantic_product_search(query)
+    return templates.TemplateResponse(
+        "semantic_search.html",
+        {"request": request, "query": query, "results": results},
+    )
+
+
+@app.get("/valentine-planner", response_class=HTMLResponse)
+def valentine_planner_form(request: Request):
+    regions = list_regions(50)
+    return templates.TemplateResponse(
+        "valentine_planner.html",
+        {
+            "request": request,
+            "regions": regions,
+            "plan": None,
+        },
+    )
+
+
+@app.post("/valentine-planner", response_class=HTMLResponse)
+def valentine_planner_submit(
+    request: Request,
+    budget: float = Form(...),
+    persona: str = Form(...),
+    delivery_speed: str = Form(...),
+    region: str = Form(...),
+):
+    regions = list_regions(50)
+    plan = valentine_experience_plan(budget, persona, delivery_speed, region)
+    return templates.TemplateResponse(
+        "valentine_planner.html",
+        {
+            "request": request,
+            "regions": regions,
+            "plan": plan,
+            "budget": budget,
+            "persona": persona,
+            "delivery_speed": delivery_speed,
+            "region": region,
+        },
     )

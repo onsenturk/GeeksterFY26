@@ -1,6 +1,12 @@
 from collections import Counter
 from math import sqrt
 
+from .ai import (
+    generate_experience_summary,
+    generate_love_letter,
+    generate_recommendation_explanations,
+    semantic_search,
+)
 from .db import get_db
 
 
@@ -65,11 +71,20 @@ def love_letter_data(customer_id):
         conn.close()
 
 
+def love_letter_with_ai(customer_id, tone):
+    customer, events = love_letter_data(customer_id)
+    customer_data = dict(customer) if customer else None
+    event_data = [dict(event) for event in events] if events else []
+    letter = generate_love_letter(customer_data, event_data, tone)
+    return customer, events, letter
+
+
 def recommend_products(customer_id, limit=5):
     conn = get_db()
     try:
         rows = conn.execute(
-            "SELECT product_name, product_category, unit_price, rating "
+            "SELECT product_name, product_category, unit_price, rating, "
+            "gift_persona, delivery_speed "
             "FROM gift_recommender "
             "WHERE customer_id = ? "
             "AND (returned_flag = 'False' OR returned_flag IS NULL) "
@@ -81,7 +96,8 @@ def recommend_products(customer_id, limit=5):
             return rows
 
         rows = conn.execute(
-            "SELECT product_name, product_category, unit_price, AVG(rating) AS rating "
+            "SELECT product_name, product_category, unit_price, AVG(rating) AS rating, "
+            "NULL AS gift_persona, NULL AS delivery_speed "
             "FROM gift_recommender "
             "GROUP BY product_name, product_category, unit_price "
             "ORDER BY rating DESC LIMIT ?",
@@ -90,6 +106,30 @@ def recommend_products(customer_id, limit=5):
         return rows
     finally:
         conn.close()
+
+
+def _get_customer_profile(customer_id):
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT customer_id, first_name, last_name, loyalty_tier, "
+            "preferred_language "
+            "FROM dim_customer WHERE customer_id = ?",
+            (customer_id,),
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def recommend_products_with_explanations(customer_id, limit=5):
+    rows = recommend_products(customer_id, limit)
+    recommendations = [dict(row) for row in rows]
+    customer = _get_customer_profile(customer_id) or {}
+    reasons, source = generate_recommendation_explanations(customer, recommendations)
+    for rec, reason in zip(recommendations, reasons):
+        rec["why"] = reason
+    return recommendations, {"mode": source}
 
 
 def compatibility_score(user_a, user_b):
@@ -231,6 +271,118 @@ def gift_concierge(budget, persona, delivery_speed, limit=5):
         return rows
     finally:
         conn.close()
+
+
+def semantic_product_search(query, limit=8):
+    return semantic_search(query, limit=limit)
+
+
+def list_regions(limit=50):
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT DISTINCT region FROM global_routing ORDER BY region LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [row["region"] for row in rows]
+    finally:
+        conn.close()
+
+
+def _supply_chain_risk_map():
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT dp.product_name, sc.vendor_lead_time_days, sc.stock_level, "
+            "sc.delay_reason "
+            "FROM supply_chain sc "
+            "JOIN dim_product dp ON sc.product_id = dp.product_id"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    risk_map = {}
+    for row in rows:
+        lead_time = float(row["vendor_lead_time_days"])
+        stock = float(row["stock_level"])
+        delay_penalty = 5.0 if row["delay_reason"] != "none" else 0.0
+        stock_risk = max(0.0, (500.0 - stock) / 500.0) * 30.0
+        score = lead_time * 0.7 + stock_risk + delay_penalty
+        risk_map[row["product_name"]] = round(score, 2)
+
+    return risk_map
+
+
+def _delivery_metrics(region):
+    conn = get_db()
+    try:
+        routing = conn.execute(
+            "SELECT request_count_per_min, p95_latency_ms, failure_rate "
+            "FROM global_routing WHERE region = ?",
+            (region,),
+        ).fetchone()
+
+        success = conn.execute(
+            "SELECT AVG(CASE WHEN delivery_status = 'delivered' THEN 1.0 ELSE 0.0 END) "
+            "AS success_rate "
+            "FROM love_notes_telemetry WHERE region_destination = ?",
+            (region,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    return {
+        "routing": dict(routing) if routing else None,
+        "success_rate": None if not success else success["success_rate"],
+    }
+
+
+def valentine_experience_plan(budget, persona, delivery_speed, region):
+    recommendations = gift_concierge(budget, persona, delivery_speed, limit=3)
+    recs = [dict(row) for row in recommendations]
+    top_gift = recs[0]["product_name"] if recs else None
+
+    risk_map = _supply_chain_risk_map()
+    risk_score = risk_map.get(top_gift)
+
+    delivery = _delivery_metrics(region) if region else {"routing": None, "success_rate": None}
+
+    steps = [
+        {
+            "title": "Select the gift",
+            "detail": "Pick a top-rated gift that matches the recipient persona.",
+        },
+        {
+            "title": "Confirm inventory",
+            "detail": "Check supply chain risk and stock levels before finalizing.",
+        },
+        {
+            "title": "Lock delivery",
+            "detail": "Choose the delivery window and validate regional reliability.",
+        },
+        {
+            "title": "Personalize the moment",
+            "detail": "Add a note and a follow-up touchpoint after delivery.",
+        },
+    ]
+
+    summary = generate_experience_summary(
+        {
+            "budget": budget,
+            "persona": persona,
+            "delivery_speed": delivery_speed,
+            "region": region,
+            "top_gift": top_gift,
+        }
+    )
+
+    return {
+        "recommendations": recs,
+        "risk_score": risk_score,
+        "delivery": delivery,
+        "steps": steps,
+        "summary": summary,
+    }
 
 
 def order_quote(product_id, quantity, loyalty_tier):
