@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <h1>Compatibility Copilot</h1>
+  <p>Compare personality traits and interests for matchmaking insights.</p>
+</section>
+
+<section class="card">
+  <form method="post" class="form two-column">
+    <label>
+      User A
+      <select name="user_a" required>
+        {% for user in users %}
+        <option value="{{ user.user_id }}">{{ user.user_id }} ({{ user.age }}, {{ user.location_region }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      User B
+      <select name="user_b" required>
+        {% for user in users %}
+        <option value="{{ user.user_id }}">{{ user.user_id }} ({{ user.age }}, {{ user.location_region }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="button">Analyze</button>
+  </form>
+</section>
+
+{% if result %}
+<section class="card">
+  <h2>Match Report</h2>
+  <div class="score">Compatibility Score: {{ result.score }}%</div>
+  <div class="traits">
+    <div>
+      <h3>{{ result.user_a.user_id }}</h3>
+      <p>O: {{ result.user_a.openness }}</p>
+      <p>C: {{ result.user_a.conscientiousness }}</p>
+      <p>E: {{ result.user_a.extraversion }}</p>
+      <p>A: {{ result.user_a.agreeableness }}</p>
+      <p>N: {{ result.user_a.neuroticism }}</p>
+    </div>
+    <div>
+      <h3>{{ result.user_b.user_id }}</h3>
+      <p>O: {{ result.user_b.openness }}</p>
+      <p>C: {{ result.user_b.conscientiousness }}</p>
+      <p>E: {{ result.user_b.extraversion }}</p>
+      <p>A: {{ result.user_b.agreeableness }}</p>
+      <p>N: {{ result.user_b.neuroticism }}</p>
+    </div>
+  </div>
+  <div>
+    <h3>Shared Interests</h3>
+    {% if result.overlap %}
+      <p>{{ result.overlap | join(", ") }}</p>
+    {% else %}
+      <p>No overlap found yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

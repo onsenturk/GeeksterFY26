@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <h1>Love Analytics Platform</h1>
+  <p>Quick metrics across all datasets.</p>
+</section>
+
+<section class="card">
+  <h2>Row Counts</h2>
+  <div class="grid">
+    {% for name, value in counts.items() %}
+    <div class="stat">
+      <div class="stat-label">{{ name }}</div>
+      <div class="stat-value">{{ value }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <h2>Gift Recommender Signals</h2>
+  <div class="score-row">
+    <div>
+      <div class="stat-label">Avg Rating</div>
+      <div class="stat-value">{{ "%.2f"|format(scores.avg_rating or 0) }}</div>
+    </div>
+    <div>
+      <div class="stat-label">Avg Discount</div>
+      <div class="stat-value">{{ "%.2f"|format(scores.avg_discount or 0) }}</div>
+    </div>
+    <div>
+      <div class="stat-label">Avg Price</div>
+      <div class="stat-value">{{ "%.2f"|format(scores.avg_price or 0) }}</div>
+    </div>
+  </div>
+</section>
+{% endblock %}

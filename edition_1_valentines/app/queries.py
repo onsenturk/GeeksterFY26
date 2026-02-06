@@ -1,0 +1,299 @@
+from collections import Counter
+from math import sqrt
+
+from .db import get_db
+
+
+def list_customers(limit=50):
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT customer_id, first_name, last_name, loyalty_tier "
+            "FROM dim_customer ORDER BY customer_id LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return rows
+    finally:
+        conn.close()
+
+
+def list_products(limit=50):
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT product_id, product_name, unit_price, category "
+            "FROM dim_product ORDER BY product_id LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return rows
+    finally:
+        conn.close()
+
+
+def list_matchmaking_users(limit=50):
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT user_id, age, location_region "
+            "FROM matchmaking ORDER BY user_id LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return rows
+    finally:
+        conn.close()
+
+
+def love_letter_data(customer_id):
+    conn = get_db()
+    try:
+        customer = conn.execute(
+            "SELECT customer_id, first_name, last_name, city, country_code, "
+            "preferred_language, loyalty_tier "
+            "FROM dim_customer WHERE customer_id = ?",
+            (customer_id,),
+        ).fetchone()
+
+        events = conn.execute(
+            "SELECT event_type, product_name, gift_persona, delivery_speed, rating "
+            "FROM gift_recommender "
+            "WHERE customer_id = ? "
+            "ORDER BY event_ts DESC LIMIT 3",
+            (customer_id,),
+        ).fetchall()
+        return customer, events
+    finally:
+        conn.close()
+
+
+def recommend_products(customer_id, limit=5):
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT product_name, product_category, unit_price, rating "
+            "FROM gift_recommender "
+            "WHERE customer_id = ? "
+            "AND (returned_flag = 'False' OR returned_flag IS NULL) "
+            "ORDER BY rating DESC, event_ts DESC LIMIT ?",
+            (customer_id, limit),
+        ).fetchall()
+
+        if rows:
+            return rows
+
+        rows = conn.execute(
+            "SELECT product_name, product_category, unit_price, AVG(rating) AS rating "
+            "FROM gift_recommender "
+            "GROUP BY product_name, product_category, unit_price "
+            "ORDER BY rating DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return rows
+    finally:
+        conn.close()
+
+
+def compatibility_score(user_a, user_b):
+    conn = get_db()
+    try:
+        row_a = conn.execute(
+            "SELECT * FROM matchmaking WHERE user_id = ?", (user_a,)
+        ).fetchone()
+        row_b = conn.execute(
+            "SELECT * FROM matchmaking WHERE user_id = ?", (user_b,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if not row_a or not row_b:
+        return None
+
+    traits = [
+        "openness",
+        "conscientiousness",
+        "extraversion",
+        "agreeableness",
+        "neuroticism",
+    ]
+
+    diff = 0.0
+    for trait in traits:
+        diff += abs(float(row_a[trait]) - float(row_b[trait]))
+    score = max(0.0, 1.0 - (diff / len(traits)))
+
+    interests_a = set((row_a["interests"] or "").split(","))
+    interests_b = set((row_b["interests"] or "").split(","))
+    overlap = {item.strip() for item in interests_a & interests_b if item.strip()}
+
+    return {
+        "user_a": row_a,
+        "user_b": row_b,
+        "score": round(score * 100, 1),
+        "overlap": sorted(overlap),
+    }
+
+
+def sales_overview():
+    conn = get_db()
+    try:
+        summary = conn.execute(
+            "SELECT COUNT(*) AS orders, "
+            "SUM(total_amount) AS revenue, "
+            "SUM(total_amount - cost_amount) AS profit, "
+            "AVG(total_amount) AS avg_order "
+            "FROM fact_sales"
+        ).fetchone()
+
+        top_products = conn.execute(
+            "SELECT dp.product_name, SUM(fs.total_amount) AS revenue, "
+            "SUM(fs.quantity_sold) AS units "
+            "FROM fact_sales fs "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "GROUP BY dp.product_name "
+            "ORDER BY revenue DESC LIMIT 5"
+        ).fetchall()
+        return summary, top_products
+    finally:
+        conn.close()
+
+
+def global_love_metrics():
+    conn = get_db()
+    try:
+        delivery = conn.execute(
+            "SELECT region_destination, "
+            "AVG(latency_ms) AS avg_latency, "
+            "AVG(CASE WHEN delivery_status = 'delivered' THEN 1.0 ELSE 0.0 END) "
+            "AS success_rate "
+            "FROM love_notes_telemetry "
+            "GROUP BY region_destination "
+            "ORDER BY avg_latency DESC"
+        ).fetchall()
+
+        routing = conn.execute(
+            "SELECT region, request_count_per_min, p95_latency_ms, failure_rate "
+            "FROM global_routing ORDER BY failure_rate DESC LIMIT 5"
+        ).fetchall()
+        return delivery, routing
+    finally:
+        conn.close()
+
+
+def supply_chain_alerts(limit=10):
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT sc.product_id, dp.product_name, sc.vendor_lead_time_days, "
+            "sc.stock_level, sc.delay_reason, sc.region, sc.cost_per_unit "
+            "FROM supply_chain sc "
+            "JOIN dim_product dp ON sc.product_id = dp.product_id"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    alerts = []
+    for row in rows:
+        lead_time = float(row["vendor_lead_time_days"])
+        stock = float(row["stock_level"])
+        delay_penalty = 5.0 if row["delay_reason"] != "none" else 0.0
+        stock_risk = max(0.0, (500.0 - stock) / 500.0) * 30.0
+        score = lead_time * 0.7 + stock_risk + delay_penalty
+        alerts.append({"row": row, "risk": round(score, 2)})
+
+    alerts.sort(key=lambda item: item["risk"], reverse=True)
+    return alerts[:limit]
+
+
+def gift_concierge(budget, persona, delivery_speed, limit=5):
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT product_name, product_category, unit_price, rating, delivery_speed "
+            "FROM gift_recommender "
+            "WHERE list_price <= ? "
+            "AND gift_persona = ? "
+            "AND delivery_speed = ? "
+            "ORDER BY rating DESC LIMIT ?",
+            (budget, persona, delivery_speed, limit),
+        ).fetchall()
+
+        if rows:
+            return rows
+
+        rows = conn.execute(
+            "SELECT product_name, product_category, unit_price, AVG(rating) AS rating, "
+            "delivery_speed "
+            "FROM gift_recommender "
+            "WHERE list_price <= ? "
+            "GROUP BY product_name, product_category, unit_price, delivery_speed "
+            "ORDER BY rating DESC LIMIT ?",
+            (budget, limit),
+        ).fetchall()
+        return rows
+    finally:
+        conn.close()
+
+
+def order_quote(product_id, quantity, loyalty_tier):
+    conn = get_db()
+    try:
+        product = conn.execute(
+            "SELECT product_id, product_name, unit_price, category "
+            "FROM dim_product WHERE product_id = ?",
+            (product_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if not product:
+        return None
+
+    discount_map = {
+        "Bronze": 0.0,
+        "Silver": 0.05,
+        "Gold": 0.1,
+        "Platinum": 0.12,
+    }
+    discount = discount_map.get(loyalty_tier, 0.0)
+    subtotal = float(product["unit_price"]) * quantity
+    total = subtotal * (1.0 - discount)
+
+    return {
+        "product": product,
+        "quantity": quantity,
+        "discount": discount,
+        "subtotal": round(subtotal, 2),
+        "total": round(total, 2),
+    }
+
+
+def analytics_overview():
+    conn = get_db()
+    try:
+        tables = [
+            "dim_customer",
+            "dim_product",
+            "fact_sales",
+            "gift_recommender",
+            "supply_chain",
+            "matchmaking",
+            "behavior_edges",
+            "broken_hearts_security",
+            "trust_safety",
+            "global_routing",
+            "love_notes_telemetry",
+            "work_dynamics",
+        ]
+        counts = {}
+        for table in tables:
+            count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            counts[table] = count
+
+        scores = conn.execute(
+            "SELECT AVG(rating) AS avg_rating, "
+            "AVG(discount_pct) AS avg_discount, "
+            "AVG(unit_price) AS avg_price "
+            "FROM gift_recommender"
+        ).fetchone()
+        return counts, scores
+    finally:
+        conn.close()

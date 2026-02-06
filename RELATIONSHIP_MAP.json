@@ -1,0 +1,98 @@
+{
+  "valid_relationships": [
+    {
+      "source": "GiftRecommender",
+      "target": "Chocolate Global - DimCustomer",
+      "join_key": "customer_id",
+      "type": "one_to_many",
+      "description": "Multiple gift events per customer"
+    },
+    {
+      "source": "SupplyChain",
+      "target": "Chocolate Global - DimProduct",
+      "join_key": "product_id",
+      "type": "many_to_one",
+      "description": "Supply chain orders reference products"
+    },
+    {
+      "source": "Matchmaking",
+      "target": "BrokenHeartsSecurity",
+      "join_key": "user_id",
+      "type": "one_to_many",
+      "description": "Security audits per user"
+    },
+    {
+      "source": "Matchmaking",
+      "target": "BehaviorEdges",
+      "join_key": "source_user_id, target_user_id",
+      "type": "many_to_many",
+      "description": "User relationship graph"
+    }
+  ],
+  "separate_datasets": [
+    {
+      "dataset": "Chocolate Global (Business Data)",
+      "tables": [
+        "DimCustomer",
+        "DimProduct",
+        "DimDate",
+        "DimStore",
+        "DimPromotion",
+        "DimSupplier",
+        "FactSales"
+      ],
+      "domain": "E-commerce / Business Intelligence"
+    },
+    {
+      "dataset": "Application Telemetry",
+      "datasets": [
+        "Matchmaking",
+        "BrokenHeartsSecurity",
+        "BehaviorEdges",
+        "TrustSafety",
+        "GlobalRouting",
+        "LoveNotesTelemetry"
+      ],
+      "domain": "Platform Health / User Behavior"
+    },
+    {
+      "dataset": "Workplace Collaboration",
+      "datasets": [
+        "WorkDynamics"
+      ],
+      "domain": "HR / Organizational Analytics"
+    }
+  ],
+  "chocolate_global_internal_relationships": [
+    {
+      "source": "FactSales",
+      "target": "DimCustomer",
+      "join_key": "customer_id"
+    },
+    {
+      "source": "FactSales",
+      "target": "DimProduct",
+      "join_key": "product_id"
+    },
+    {
+      "source": "FactSales",
+      "target": "DimDate",
+      "join_key": "date_id"
+    },
+    {
+      "source": "FactSales",
+      "target": "DimStore",
+      "join_key": "store_id"
+    },
+    {
+      "source": "FactSales",
+      "target": "DimPromotion",
+      "join_key": "promotion_id"
+    },
+    {
+      "source": "FactSales",
+      "target": "DimSupplier",
+      "join_key": "supplier_id"
+    }
+  ]
+}

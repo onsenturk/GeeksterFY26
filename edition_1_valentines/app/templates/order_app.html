@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <h1>Valentine's Order App</h1>
+  <p>Estimate a quote and apply loyalty discounts.</p>
+</section>
+
+<section class="card">
+  <form method="post" class="form three-column">
+    <label>
+      Product
+      <select name="product_id" required>
+        {% for product in products %}
+        <option value="{{ product.product_id }}">
+          {{ product.product_id }} - {{ product.product_name }} ({{ "%.2f"|format(product.unit_price) }})
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Quantity
+      <input type="number" name="quantity" value="1" min="1" required />
+    </label>
+    <label>
+      Loyalty Tier
+      <select name="loyalty_tier" required>
+        <option value="Bronze">Bronze</option>
+        <option value="Silver">Silver</option>
+        <option value="Gold">Gold</option>
+        <option value="Platinum">Platinum</option>
+      </select>
+    </label>
+    <button type="submit" class="button">Get Quote</button>
+  </form>
+</section>
+
+{% if quote %}
+<section class="card">
+  <h2>Quote</h2>
+  <div class="quote">
+    <div><strong>Product:</strong> {{ quote.product.product_name }}</div>
+    <div><strong>Category:</strong> {{ quote.product.category }}</div>
+    <div><strong>Quantity:</strong> {{ quote.quantity }}</div>
+    <div><strong>Subtotal:</strong> {{ "%.2f"|format(quote.subtotal) }}</div>
+    <div><strong>Discount:</strong> {{ "%.0f"|format(quote.discount * 100) }}%</div>
+    <div><strong>Total:</strong> {{ "%.2f"|format(quote.total) }}</div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

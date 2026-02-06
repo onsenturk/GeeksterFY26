@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <h1>Valentine's Sales Dashboard</h1>
+  <p>Revenue, profit, and top products from Cupid Chocolate Global.</p>
+</section>
+
+<section class="metrics">
+  <div class="metric-card">
+    <div class="metric-label">Orders</div>
+    <div class="metric-value">{{ summary.orders }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Revenue</div>
+    <div class="metric-value">{{ "%.2f"|format(summary.revenue or 0) }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Profit</div>
+    <div class="metric-value">{{ "%.2f"|format(summary.profit or 0) }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Avg Order</div>
+    <div class="metric-value">{{ "%.2f"|format(summary.avg_order or 0) }}</div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Top Products by Revenue</h2>
+  <canvas id="topProductsChart" height="120"></canvas>
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Revenue</th>
+        <th>Units</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in top_products %}
+      <tr>
+        <td>{{ row.product_name }}</td>
+        <td>{{ "%.2f"|format(row.revenue or 0) }}</td>
+        <td>{{ row.units }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<script>
+  const labels = {{ top_products | map(attribute='product_name') | list | tojson }};
+  const data = {{ top_products | map(attribute='revenue') | list | tojson }};
+
+  const ctx = document.getElementById('topProductsChart');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Revenue',
+        data: data,
+        backgroundColor: '#ef7c8e'
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
+</script>
+{% endblock %}

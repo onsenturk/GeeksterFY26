@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <h1>Supply Chain Optimizer</h1>
+  <p>Highlights products with high lead time or low stock.</p>
+</section>
+
+<section class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Lead Time (days)</th>
+        <th>Stock Level</th>
+        <th>Delay Reason</th>
+        <th>Region</th>
+        <th>Risk Score</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in alerts %}
+      <tr>
+        <td>{{ item.row.product_name }}</td>
+        <td>{{ item.row.vendor_lead_time_days }}</td>
+        <td>{{ item.row.stock_level }}</td>
+        <td>{{ item.row.delay_reason }}</td>
+        <td>{{ item.row.region }}</td>
+        <td>{{ item.risk }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

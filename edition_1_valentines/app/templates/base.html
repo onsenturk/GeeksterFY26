@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title if title else "Valentine's Day Edition" }}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <div class="brand-mark">VC</div>
+      <div>
+        <div class="brand-title">Valentine's Day Edition</div>
+        <div class="brand-subtitle">Cupid Chocolate Data Lab</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="/">Home</a>
+      <a href="/love-letter">Love Letter</a>
+      <a href="/recommender">Recommender</a>
+      <a href="/compatibility">Compatibility</a>
+      <a href="/sales-dashboard">Sales</a>
+      <a href="/global-love">Global Love</a>
+      <a href="/gift-concierge">Gift Concierge</a>
+      <a href="/supply-chain">Supply Chain</a>
+      <a href="/order-app">Order App</a>
+      <a href="/analytics">Analytics</a>
+    </nav>
+  </header>
+
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    Built from the Geekster FY26 Valentine's datasets.
+  </footer>
+</body>
+</html>

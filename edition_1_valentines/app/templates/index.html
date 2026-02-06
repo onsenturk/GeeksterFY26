@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>Valentine's Day Data Playground</h1>
+    <p>Explore nine mini-experiences, each mapped to a hackathon idea and powered by the provided datasets.</p>
+    <div class="hero-actions">
+      <a class="button" href="/love-letter">Start with Love Letters</a>
+      <a class="button ghost" href="/sales-dashboard">Open Sales Pulse</a>
+    </div>
+  </div>
+  <div class="hero-card">
+    <h2>Dataset Snapshot</h2>
+    <div class="grid">
+      {% for name, value in counts.items() %}
+      <div class="stat">
+        <div class="stat-label">{{ name }}</div>
+        <div class="stat-value">{{ value }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="score-row">
+      <div>
+        <div class="stat-label">Avg Rating</div>
+        <div class="stat-value">{{ "%.2f"|format(scores.avg_rating or 0) }}</div>
+      </div>
+      <div>
+        <div class="stat-label">Avg Discount</div>
+        <div class="stat-value">{{ "%.2f"|format(scores.avg_discount or 0) }}</div>
+      </div>
+      <div>
+        <div class="stat-label">Avg Price</div>
+        <div class="stat-value">{{ "%.2f"|format(scores.avg_price or 0) }}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card-grid">
+  <article class="card">
+    <h3>Love Letter Generator</h3>
+    <p>Generate tailored messages based on customer profile and recent gift activity.</p>
+    <a href="/love-letter">Open</a>
+  </article>
+  <article class="card">
+    <h3>Smart Chocolate Recommender</h3>
+    <p>Rank products by preference signals and purchase history.</p>
+    <a href="/recommender">Open</a>
+  </article>
+  <article class="card">
+    <h3>Compatibility Copilot</h3>
+    <p>Compare OCEAN traits and shared interests for match insights.</p>
+    <a href="/compatibility">Open</a>
+  </article>
+  <article class="card">
+    <h3>Valentine's Sales Dashboard</h3>
+    <p>Track revenue, profit, and top performers.</p>
+    <a href="/sales-dashboard">Open</a>
+  </article>
+  <article class="card">
+    <h3>Global Love Tracker</h3>
+    <p>Monitor delivery latency and reliability across regions.</p>
+    <a href="/global-love">Open</a>
+  </article>
+  <article class="card">
+    <h3>Gift Concierge Bot</h3>
+    <p>Suggests gifts using persona and delivery preferences.</p>
+    <a href="/gift-concierge">Open</a>
+  </article>
+  <article class="card">
+    <h3>Supply Chain Optimizer</h3>
+    <p>Surface inventory risks and long lead times.</p>
+    <a href="/supply-chain">Open</a>
+  </article>
+  <article class="card">
+    <h3>Valentine's Order App</h3>
+    <p>Estimate quotes and apply loyalty discounts.</p>
+    <a href="/order-app">Open</a>
+  </article>
+  <article class="card">
+    <h3>Love Analytics Platform</h3>
+    <p>Quick metrics for every dataset in one place.</p>
+    <a href="/analytics">Open</a>
+  </article>
+</section>
+{% endblock %}

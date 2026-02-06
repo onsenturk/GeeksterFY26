@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <h1>Global Love Tracker</h1>
+  <p>Delivery reliability paired with routing performance.</p>
+</section>
+
+<section class="card">
+  <h2>Delivery Success by Destination</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Destination</th>
+        <th>Avg Latency (ms)</th>
+        <th>Success Rate</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in delivery %}
+      <tr>
+        <td>{{ row.region_destination }}</td>
+        <td>{{ "%.1f"|format(row.avg_latency or 0) }}</td>
+        <td>{{ "%.0f"|format((row.success_rate or 0) * 100) }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Routing Stress Signals</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Region</th>
+        <th>Requests / Min</th>
+        <th>P95 Latency</th>
+        <th>Failure Rate</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in routing %}
+      <tr>
+        <td>{{ row.region }}</td>
+        <td>{{ row.request_count_per_min }}</td>
+        <td>{{ row.p95_latency_ms }}</td>
+        <td>{{ "%.2f"|format(row.failure_rate or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

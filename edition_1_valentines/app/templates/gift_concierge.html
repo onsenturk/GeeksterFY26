@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <h1>Gift Concierge Bot</h1>
+  <p>Rule-based gift suggestions using persona and delivery preferences.</p>
+</section>
+
+<section class="card">
+  <form method="post" class="form three-column">
+    <label>
+      Budget (list price)
+      <input type="number" name="budget" value="50" step="1" min="10" required />
+    </label>
+    <label>
+      Gift Persona
+      <select name="persona" required>
+        <option value="Partner">Partner</option>
+        <option value="Friend">Friend</option>
+        <option value="Family">Family</option>
+        <option value="Self">Self</option>
+      </select>
+    </label>
+    <label>
+      Delivery Speed
+      <select name="delivery_speed" required>
+        <option value="standard">standard</option>
+        <option value="express">express</option>
+      </select>
+    </label>
+    <button type="submit" class="button">Suggest</button>
+  </form>
+</section>
+
+{% if recommendations %}
+<section class="card">
+  <h2>Gift Suggestions</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Category</th>
+        <th>Price</th>
+        <th>Rating</th>
+        <th>Delivery</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in recommendations %}
+      <tr>
+        <td>{{ row.product_name }}</td>
+        <td>{{ row.product_category }}</td>
+        <td>{{ "%.2f"|format(row.unit_price or 0) }}</td>
+        <td>{{ "%.1f"|format(row.rating or 0) }}</td>
+        <td>{{ row.delivery_speed }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}
