@@ -54,7 +54,8 @@ def love_letter_data(customer_id):
     try:
         customer = conn.execute(
             "SELECT customer_id, first_name, last_name, city, country_code, "
-            "preferred_language, loyalty_tier "
+            "state_province, age_band, preferred_language, loyalty_tier, "
+            "consent_marketing "
             "FROM dim_customer WHERE customer_id = ?",
             (customer_id,),
         ).fetchone()
