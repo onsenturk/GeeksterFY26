@@ -472,3 +472,85 @@ def generate_love_letter(customer, events, tone):
     closing = "With affection,\nCupid Chocolate Company"
 
     return "\n\n".join([line_one, line_two, line_three, line_four, closing]), "heuristic", error
+
+
+def _format_rows(rows, limit=5):
+    return rows[:limit] if rows else []
+
+
+def generate_sales_chat_response(question, context):
+    if not question or not question.strip():
+        return "Ask a sales question to get started.", "heuristic", None
+
+    compact = {
+        "summary": context.get("summary"),
+        "top_categories": _format_rows(context.get("by_category"), 5),
+        "top_products": _format_rows(context.get("top_products"), 5),
+        "channels": context.get("by_channel"),
+        "top_countries": _format_rows(context.get("by_country"), 5),
+        "monthly": _format_rows(context.get("by_month"), 12),
+        "promotions": _format_rows(context.get("by_promo"), 5),
+        "loyalty": context.get("by_loyalty"),
+    }
+
+    if llm_available():
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a sales analyst. Use only the provided data to answer. "
+                    "Be concise, English only. If data is missing, say what is missing."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Question: {question}\n"
+                    f"Data: {json.dumps(compact)}"
+                ),
+            },
+        ]
+        response, source, error = _call_openai_chat_with_error(
+            messages, temperature=0.2, max_tokens=260
+        )
+        if response:
+            return response.strip(), source, None
+        return "I could not generate an answer from the model.", source, error
+
+    q = question.lower()
+    if "product" in q or "sku" in q:
+        rows = compact["top_products"]
+        if rows:
+            items = ", ".join(f"{r['product_name']} ({r['revenue']:.2f})" for r in rows)
+            return f"Top products by revenue: {items}.", "heuristic", None
+    if "category" in q:
+        rows = compact["top_categories"]
+        if rows:
+            items = ", ".join(f"{r['category']} ({r['revenue']:.2f})" for r in rows)
+            return f"Top categories by revenue: {items}.", "heuristic", None
+    if "channel" in q:
+        rows = compact["channels"] or []
+        if rows:
+            items = ", ".join(f"{r['channel']} ({r['revenue']:.2f})" for r in rows)
+            return f"Revenue by channel: {items}.", "heuristic", None
+    if "country" in q or "region" in q:
+        rows = compact["top_countries"]
+        if rows:
+            items = ", ".join(f"{r['country_code']} ({r['revenue']:.2f})" for r in rows)
+            return f"Top countries by revenue: {items}.", "heuristic", None
+    if "month" in q or "trend" in q:
+        rows = compact["monthly"]
+        if rows:
+            last = rows[-1]
+            return (
+                f"Latest month revenue: {last['revenue']:.2f} across {last['orders']} orders.",
+                "heuristic",
+                None,
+            )
+
+    summary = compact.get("summary") or {}
+    return (
+        f"Overall revenue is {summary.get('revenue', 0):.2f} with profit {summary.get('profit', 0):.2f}.",
+        "heuristic",
+        None,
+    )

@@ -36,7 +36,7 @@
       <tr>
         <td>{{ row.product_name }}</td>
         <td>{{ row.category }}</td>
-        <td>{{ "%.2f"|format(row.unit_price or 0) }}</td>
+        <td>EUR {{ "%.2f"|format(row.unit_price or 0) }}</td>
         <td>{{ "%.1f"|format(row.avg_rating or 0) }}</td>
         <td>{{ row.review_count or 0 }}</td>
         <td class="explanation">{{ row.snippet }}</td>

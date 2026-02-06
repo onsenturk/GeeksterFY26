@@ -12,7 +12,7 @@
       <select name="product_id" required>
         {% for product in products %}
         <option value="{{ product.product_id }}">
-          {{ product.product_id }} - {{ product.product_name }} ({{ "%.2f"|format(product.unit_price) }})
+          {{ product.product_id }} - {{ product.product_name }} (EUR {{ "%.2f"|format(product.unit_price) }})
         </option>
         {% endfor %}
       </select>
@@ -41,9 +41,9 @@
     <div><strong>Product:</strong> {{ quote.product.product_name }}</div>
     <div><strong>Category:</strong> {{ quote.product.category }}</div>
     <div><strong>Quantity:</strong> {{ quote.quantity }}</div>
-    <div><strong>Subtotal:</strong> {{ "%.2f"|format(quote.subtotal) }}</div>
+    <div><strong>Subtotal:</strong> EUR {{ "%.2f"|format(quote.subtotal) }}</div>
     <div><strong>Discount:</strong> {{ "%.0f"|format(quote.discount * 100) }}%</div>
-    <div><strong>Total:</strong> {{ "%.2f"|format(quote.total) }}</div>
+    <div><strong>Total:</strong> EUR {{ "%.2f"|format(quote.total) }}</div>
   </div>
 </section>
 {% endif %}

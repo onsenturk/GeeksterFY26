@@ -5,6 +5,75 @@
   <p>Revenue, profit, and top products from Cupid Chocolate Global.</p>
 </section>
 
+<section class="card">
+  <h2>Sales Chat Agent</h2>
+  <p class="muted">Ask questions like "Which categories drive revenue?" or "What is the latest monthly trend?"</p>
+  <form method="post" action="/sales-dashboard/chat" class="form" id="salesChatForm">
+    <label>
+      Your question
+      <input type="text" name="question" value="{{ chat_question }}" placeholder="Ask about sales performance" required />
+    </label>
+    <button type="submit" class="button">Ask</button>
+  </form>
+
+  {% if chat_response %}
+  <div class="chat-response">
+    <div class="chat-response-header">Answer</div>
+    {% if chat_error %}
+    <div class="muted">Error: {{ chat_error }}</div>
+    {% endif %}
+    <div class="chat-response-body">
+      {% for paragraph in chat_response.split('\n\n') %}
+      <p>{{ paragraph }}</p>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Sales Filters</h2>
+  <form method="post" action="/sales-dashboard/filter" class="form two-column">
+    <label>
+      Category
+      <select name="category">
+        <option value="">All</option>
+        {% for item in filter_options.categories %}
+        <option value="{{ item }}" {% if filters.category == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Channel
+      <select name="channel">
+        <option value="">All</option>
+        {% for item in filter_options.channels %}
+        <option value="{{ item }}" {% if filters.channel == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Country
+      <select name="country">
+        <option value="">All</option>
+        {% for item in filter_options.countries %}
+        <option value="{{ item }}" {% if filters.country == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Month
+      <select name="month">
+        <option value="">All</option>
+        {% for item in filter_options.months %}
+        <option value="{{ item }}" {% if filters.month == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="button">Apply Filters</button>
+  </form>
+</section>
+
 <section class="metrics">
   <div class="metric-card">
     <div class="metric-label">Orders</div>
@@ -12,15 +81,15 @@
   </div>
   <div class="metric-card">
     <div class="metric-label">Revenue</div>
-    <div class="metric-value">{{ "%.2f"|format(summary.revenue or 0) }}</div>
+    <div class="metric-value">EUR {{ "%.2f"|format(summary.revenue or 0) }}</div>
   </div>
   <div class="metric-card">
     <div class="metric-label">Profit</div>
-    <div class="metric-value">{{ "%.2f"|format(summary.profit or 0) }}</div>
+    <div class="metric-value">EUR {{ "%.2f"|format(summary.profit or 0) }}</div>
   </div>
   <div class="metric-card">
     <div class="metric-label">Avg Order</div>
-    <div class="metric-value">{{ "%.2f"|format(summary.avg_order or 0) }}</div>
+    <div class="metric-value">EUR {{ "%.2f"|format(summary.avg_order or 0) }}</div>
   </div>
 </section>
 
@@ -39,7 +108,7 @@
       {% for row in top_products %}
       <tr>
         <td>{{ row.product_name }}</td>
-        <td>{{ "%.2f"|format(row.revenue or 0) }}</td>
+        <td>EUR {{ "%.2f"|format(row.revenue or 0) }}</td>
         <td>{{ row.units }}</td>
       </tr>
       {% endfor %}
@@ -47,11 +116,46 @@
   </table>
 </section>
 
+<section class="card">
+  <h2>All Ordered Products</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Revenue</th>
+        <th>Profit</th>
+        <th>Units</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in all_products %}
+      <tr>
+        <td>{{ row.product_name }}</td>
+        <td>EUR {{ "%.2f"|format(row.revenue or 0) }}</td>
+        <td>EUR {{ "%.2f"|format(row.profit or 0) }}</td>
+        <td>{{ row.units }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div class="thinking-overlay" id="salesChatOverlay" aria-hidden="true">
+  <div class="thinking-card" role="status" aria-live="polite">
+    <div class="spinner"></div>
+    <div>
+      <div class="thinking-title">Analyzing sales signals...</div>
+      <div class="muted">Crunching revenue, profit, and trend data.</div>
+    </div>
+  </div>
+</div>
+
 <script>
   const labels = {{ top_products | map(attribute='product_name') | list | tojson }};
   const data = {{ top_products | map(attribute='revenue') | list | tojson }};
 
   const ctx = document.getElementById('topProductsChart');
+  const colors = ['#ef7c8e', '#f2b6a0', '#f6d58f', '#b8d5b2', '#a4c8e1'];
   new Chart(ctx, {
     type: 'bar',
     data: {
@@ -59,7 +163,7 @@
       datasets: [{
         label: 'Revenue',
         data: data,
-        backgroundColor: '#ef7c8e'
+        backgroundColor: data.map((_, idx) => colors[idx % colors.length])
       }]
     },
     options: {
@@ -68,5 +172,16 @@
       }
     }
   });
+</script>
+
+<script>
+  const chatForm = document.getElementById('salesChatForm');
+  const chatOverlay = document.getElementById('salesChatOverlay');
+  if (chatForm && chatOverlay) {
+    chatForm.addEventListener('submit', () => {
+      chatOverlay.setAttribute('aria-hidden', 'false');
+      chatOverlay.classList.add('show');
+    });
+  }
 </script>
 {% endblock %}

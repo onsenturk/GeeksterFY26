@@ -5,6 +5,7 @@ from .ai import (
     generate_experience_summary,
     generate_love_letter,
     generate_recommendation_explanations,
+    generate_sales_chat_response,
     semantic_search,
 )
 from .db import get_db
@@ -344,6 +345,245 @@ def sales_overview():
         return summary, top_products
     finally:
         conn.close()
+
+
+def _sales_filters(filters):
+    clauses = []
+    params = []
+
+    category = filters.get("category")
+    channel = filters.get("channel")
+    country = filters.get("country")
+    month = filters.get("month")
+
+    if category:
+        clauses.append("dp.category = ?")
+        params.append(category)
+    if channel:
+        clauses.append("ds.channel = ?")
+        params.append(channel)
+    if country:
+        clauses.append("ds.country_code = ?")
+        params.append(country)
+    if month and "-" in month:
+        year_str, month_str = month.split("-", 1)
+        if year_str.isdigit() and month_str.isdigit():
+            clauses.append("dd.year = ? AND dd.month = ?")
+            params.extend([int(year_str), int(month_str)])
+
+    where_sql = ""
+    if clauses:
+        where_sql = "WHERE " + " AND ".join(clauses)
+
+    return where_sql, params
+
+
+def sales_filter_options():
+    conn = get_db()
+    try:
+        categories = [row[0] for row in conn.execute(
+            "SELECT DISTINCT category FROM dim_product ORDER BY category"
+        ).fetchall()]
+        channels = [row[0] for row in conn.execute(
+            "SELECT DISTINCT channel FROM dim_store ORDER BY channel"
+        ).fetchall()]
+        countries = [row[0] for row in conn.execute(
+            "SELECT DISTINCT country_code FROM dim_store ORDER BY country_code"
+        ).fetchall()]
+        months = [
+            f"{row[0]}-{row[1]:02d}"
+            for row in conn.execute(
+                "SELECT DISTINCT year, month FROM dim_date ORDER BY year, month"
+            ).fetchall()
+        ]
+        return {
+            "categories": categories,
+            "channels": channels,
+            "countries": countries,
+            "months": months,
+        }
+    finally:
+        conn.close()
+
+
+def sales_overview_filtered(filters):
+    conn = get_db()
+    try:
+        where_sql, params = _sales_filters(filters)
+
+        summary = conn.execute(
+            "SELECT COUNT(*) AS orders, "
+            "SUM(fs.total_amount) AS revenue, "
+            "SUM(fs.total_amount - fs.cost_amount) AS profit, "
+            "AVG(fs.total_amount) AS avg_order "
+            "FROM fact_sales fs "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "JOIN dim_store ds ON fs.store_id = ds.store_id "
+            "JOIN dim_date dd ON fs.date_id = dd.date_id "
+            f"{where_sql}",
+            params,
+        ).fetchone()
+
+        top_products = conn.execute(
+            "SELECT dp.product_name, SUM(fs.total_amount) AS revenue, "
+            "SUM(fs.quantity_sold) AS units "
+            "FROM fact_sales fs "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "JOIN dim_store ds ON fs.store_id = ds.store_id "
+            "JOIN dim_date dd ON fs.date_id = dd.date_id "
+            f"{where_sql} "
+            "GROUP BY dp.product_name "
+            "ORDER BY revenue DESC LIMIT 5",
+            params,
+        ).fetchall()
+        return summary, top_products
+    finally:
+        conn.close()
+
+
+def sales_all_products(filters):
+    conn = get_db()
+    try:
+        where_sql, params = _sales_filters(filters)
+        rows = conn.execute(
+            "SELECT dp.product_name, SUM(fs.total_amount) AS revenue, "
+            "SUM(fs.total_amount - fs.cost_amount) AS profit, "
+            "SUM(fs.quantity_sold) AS units "
+            "FROM fact_sales fs "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "JOIN dim_store ds ON fs.store_id = ds.store_id "
+            "JOIN dim_date dd ON fs.date_id = dd.date_id "
+            f"{where_sql} "
+            "GROUP BY dp.product_name "
+            "ORDER BY revenue DESC"
+        , params).fetchall()
+        return rows
+    finally:
+        conn.close()
+
+
+def sales_chat_context(filters):
+    conn = get_db()
+    try:
+        where_sql, params = _sales_filters(filters)
+        summary = conn.execute(
+            "SELECT COUNT(*) AS orders, "
+            "SUM(total_amount) AS revenue, "
+            "SUM(total_amount - cost_amount) AS profit, "
+            "AVG(total_amount) AS avg_order "
+            "FROM fact_sales fs "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "JOIN dim_store ds ON fs.store_id = ds.store_id "
+            "JOIN dim_date dd ON fs.date_id = dd.date_id "
+            f"{where_sql}",
+            params,
+        ).fetchone()
+
+        by_category = conn.execute(
+            "SELECT dp.category, SUM(fs.total_amount) AS revenue, "
+            "SUM(fs.total_amount - fs.cost_amount) AS profit "
+            "FROM fact_sales fs "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "JOIN dim_store ds ON fs.store_id = ds.store_id "
+            "JOIN dim_date dd ON fs.date_id = dd.date_id "
+            f"{where_sql} "
+            "GROUP BY dp.category "
+            "ORDER BY revenue DESC LIMIT 8"
+        , params).fetchall()
+
+        by_channel = conn.execute(
+            "SELECT ds.channel, SUM(fs.total_amount) AS revenue, "
+            "SUM(fs.total_amount - fs.cost_amount) AS profit, COUNT(*) AS orders "
+            "FROM fact_sales fs "
+            "JOIN dim_store ds ON fs.store_id = ds.store_id "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "JOIN dim_date dd ON fs.date_id = dd.date_id "
+            f"{where_sql} "
+            "GROUP BY ds.channel ORDER BY revenue DESC"
+        , params).fetchall()
+
+        by_country = conn.execute(
+            "SELECT ds.country_code, SUM(fs.total_amount) AS revenue, "
+            "SUM(fs.total_amount - fs.cost_amount) AS profit, COUNT(*) AS orders "
+            "FROM fact_sales fs "
+            "JOIN dim_store ds ON fs.store_id = ds.store_id "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "JOIN dim_date dd ON fs.date_id = dd.date_id "
+            f"{where_sql} "
+            "GROUP BY ds.country_code ORDER BY revenue DESC LIMIT 8"
+        , params).fetchall()
+
+        by_month = conn.execute(
+            "SELECT dd.year, dd.month, SUM(fs.total_amount) AS revenue, "
+            "SUM(fs.total_amount - fs.cost_amount) AS profit, COUNT(*) AS orders "
+            "FROM fact_sales fs "
+            "JOIN dim_date dd ON fs.date_id = dd.date_id "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "JOIN dim_store ds ON fs.store_id = ds.store_id "
+            f"{where_sql} "
+            "GROUP BY dd.year, dd.month ORDER BY dd.year, dd.month"
+        , params).fetchall()
+
+        by_promo = conn.execute(
+            "SELECT dpromo.promo_name, dpromo.promo_channel, "
+            "AVG(dpromo.discount_percent) AS discount_pct, "
+            "SUM(fs.total_amount) AS revenue, "
+            "SUM(fs.total_amount - fs.cost_amount) AS profit, COUNT(*) AS orders "
+            "FROM fact_sales fs "
+            "JOIN dim_promotion dpromo ON fs.promotion_id = dpromo.promotion_id "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "JOIN dim_store ds ON fs.store_id = ds.store_id "
+            "JOIN dim_date dd ON fs.date_id = dd.date_id "
+            f"{where_sql} "
+            "GROUP BY dpromo.promo_name, dpromo.promo_channel "
+            "ORDER BY revenue DESC LIMIT 8"
+        , params).fetchall()
+
+        by_loyalty = conn.execute(
+            "SELECT dc.loyalty_tier, SUM(fs.total_amount) AS revenue, "
+            "SUM(fs.total_amount - fs.cost_amount) AS profit, COUNT(*) AS orders "
+            "FROM fact_sales fs "
+            "JOIN dim_customer dc ON fs.customer_id = dc.customer_id "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "JOIN dim_store ds ON fs.store_id = ds.store_id "
+            "JOIN dim_date dd ON fs.date_id = dd.date_id "
+            f"{where_sql} "
+            "GROUP BY dc.loyalty_tier ORDER BY revenue DESC"
+        , params).fetchall()
+
+        top_products = conn.execute(
+            "SELECT dp.product_name, SUM(fs.total_amount) AS revenue, "
+            "SUM(fs.total_amount - fs.cost_amount) AS profit, "
+            "SUM(fs.quantity_sold) AS units "
+            "FROM fact_sales fs "
+            "JOIN dim_product dp ON fs.product_id = dp.product_id "
+            "JOIN dim_store ds ON fs.store_id = ds.store_id "
+            "JOIN dim_date dd ON fs.date_id = dd.date_id "
+            f"{where_sql} "
+            "GROUP BY dp.product_name ORDER BY revenue DESC LIMIT 8"
+        , params).fetchall()
+
+        def to_dicts(rows):
+            return [dict(row) for row in rows]
+
+        return {
+            "summary": dict(summary) if summary else {},
+            "by_category": to_dicts(by_category),
+            "by_channel": to_dicts(by_channel),
+            "by_country": to_dicts(by_country),
+            "by_month": to_dicts(by_month),
+            "by_promo": to_dicts(by_promo),
+            "by_loyalty": to_dicts(by_loyalty),
+            "top_products": to_dicts(top_products),
+        }
+    finally:
+        conn.close()
+
+
+def sales_chat_answer(question, filters):
+    context = sales_chat_context(filters)
+    response, source, error = generate_sales_chat_response(question, context)
+    return response, source, error
 
 
 def global_love_metrics():

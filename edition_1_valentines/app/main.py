@@ -22,6 +22,10 @@ from .queries import (
     order_quote,
     recommend_products_with_explanations,
     sales_overview,
+    sales_all_products,
+    sales_filter_options,
+    sales_chat_answer,
+    sales_overview_filtered,
     semantic_product_search,
     supply_chain_alerts,
     valentine_experience_plan,
@@ -136,10 +140,99 @@ def compatibility_submit(
 
 @app.get("/sales-dashboard", response_class=HTMLResponse)
 def sales_dashboard(request: Request):
-    summary, top_products = sales_overview()
+    filters = {
+        "category": request.query_params.get("category") or "",
+        "channel": request.query_params.get("channel") or "",
+        "country": request.query_params.get("country") or "",
+        "month": request.query_params.get("month") or "",
+    }
+    summary, top_products = sales_overview_filtered(filters)
+    all_products = sales_all_products(filters)
+    options = sales_filter_options()
     return templates.TemplateResponse(
         "sales_dashboard.html",
-        {"request": request, "summary": summary, "top_products": top_products},
+        {
+            "request": request,
+            "summary": summary,
+            "top_products": top_products,
+            "all_products": all_products,
+            "filter_options": options,
+            "filters": filters,
+            "chat_question": "",
+            "chat_response": None,
+            "chat_source": None,
+            "chat_error": None,
+        },
+    )
+
+
+@app.post("/sales-dashboard/chat", response_class=HTMLResponse)
+def sales_chat_submit(
+    request: Request,
+    question: str = Form(...),
+    category: str = Form(""),
+    channel: str = Form(""),
+    country: str = Form(""),
+    month: str = Form(""),
+):
+    filters = {
+        "category": category,
+        "channel": channel,
+        "country": country,
+        "month": month,
+    }
+    summary, top_products = sales_overview_filtered(filters)
+    all_products = sales_all_products(filters)
+    options = sales_filter_options()
+    response, source, error = sales_chat_answer(question, filters)
+    return templates.TemplateResponse(
+        "sales_dashboard.html",
+        {
+            "request": request,
+            "summary": summary,
+            "top_products": top_products,
+            "all_products": all_products,
+            "filter_options": options,
+            "filters": filters,
+            "chat_question": question,
+            "chat_response": response,
+            "chat_source": source,
+            "chat_error": error,
+        },
+    )
+
+
+@app.post("/sales-dashboard/filter", response_class=HTMLResponse)
+def sales_filter_submit(
+    request: Request,
+    category: str = Form(""),
+    channel: str = Form(""),
+    country: str = Form(""),
+    month: str = Form(""),
+):
+    filters = {
+        "category": category,
+        "channel": channel,
+        "country": country,
+        "month": month,
+    }
+    summary, top_products = sales_overview_filtered(filters)
+    all_products = sales_all_products(filters)
+    options = sales_filter_options()
+    return templates.TemplateResponse(
+        "sales_dashboard.html",
+        {
+            "request": request,
+            "summary": summary,
+            "top_products": top_products,
+            "all_products": all_products,
+            "filter_options": options,
+            "filters": filters,
+            "chat_question": "",
+            "chat_response": None,
+            "chat_source": None,
+            "chat_error": None,
+        },
     )
 
 

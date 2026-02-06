@@ -303,6 +303,28 @@ table th, table td {
   gap: 6px;
 }
 
+.chat-response {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid #f0d7dc;
+  background: linear-gradient(135deg, #fff7fa, #fffaf5);
+  box-shadow: var(--shadow);
+}
+
+.chat-response-header {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.chat-response-body p {
+  margin: 0 0 10px;
+}
+
+.chat-response-body p:last-child {
+  margin-bottom: 0;
+}
+
 .step-list {
   display: grid;
   gap: 12px;
